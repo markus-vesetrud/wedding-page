@@ -8,7 +8,11 @@
       "appBuildCommand": "npm run build",
       "apiBuildCommand": "npm run build",
       "run": "npm run dev",
-      "appDevserverUrl": "http://localhost:5173"
+      "appDevserverUrl": "http://localhost:5173",
+      "appName": "wedding-swa-kteojf7mxy2qa",
+      "resourceGroup": "rg-wedding-page",
+      "apiLanguage": "node",
+      "apiVersion": "22"
     }
   }
 }
