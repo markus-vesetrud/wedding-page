@@ -1,33 +1,53 @@
-# sv
+# Frontend — SvelteKit SPA
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+The wedding page frontend, built with SvelteKit 2 and Svelte 5, compiled to a static site using `@sveltejs/adapter-static`.
 
-## Creating a project
+## Key Files
 
-If you're seeing this, you've probably already done this step. Congrats!
+| File | Purpose |
+|---|---|
+| `src/routes/+page.svelte` | Main page — gift registry and guest list with real-time sync |
+| `src/lib/websocket.ts` | WebSocket client — negotiates connection, sends/receives state |
+| `src/lib/types.ts` | Shared TypeScript types (`AppState`, `ListItem`, `WsMessage`) |
+| `static/staticwebapp.config.json` | SWA routing — SPA fallback + API route permissions |
 
-```sh
-# create a new project
-npx sv create my-app
+## How real-time sync works
+
+1. On mount, the page calls `createWebSocket()` which POSTs to `/api/negotiate`
+2. The API returns a `wss://` URL pointing to Azure Web PubSub
+3. The browser opens a WebSocket with the `json.webpubsub.azure.v1` subprotocol
+4. On connection, the server sends the current state (`{ type: "state", data: ... }`)
+5. When a user modifies a list, the client sends an `event` message to the server
+6. The server persists the new state and broadcasts it to all connected clients
+7. All browsers update their UI reactively via Svelte 5's `$state`
+
+Messages use the `event` type (not `sendToGroup`) so they go through the server-side eventhandler, which persists state to blob storage before broadcasting. This ensures state survives page refreshes.
+
+## staticwebapp.config.json
+
+```json
+{
+  "navigationFallback": { "rewrite": "/index.html" },
+  "routes": [{ "route": "/api/*", "allowedRoles": ["anonymous"] }]
+}
 ```
 
-To recreate this project with the same configuration:
+- **`navigationFallback`**: Required for SPA routing — any unmatched path serves `index.html` so SvelteKit's client-side router handles it
+- **`routes`**: Explicitly allows unauthenticated access to `/api/*`. Without this, the SWA would require authentication for API calls
 
-```sh
-# recreate this project
-npx sv create --template minimal --types ts --add prettier --install npm frontend
+## Development
+
+```bash
+npm ci
+npm run dev    # Vite dev server on :5173
+npm run build  # Static build to build/
 ```
 
-## Developing
+During local dev, `swa start` proxies `/api/*` to `http://localhost:7071` (the local Function App).
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+## Build Output
 
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
+`npm run build` produces a static site in `build/` which is deployed directly to the SWA. No server-side rendering — everything runs in the browser.
 
 ## Building
 
