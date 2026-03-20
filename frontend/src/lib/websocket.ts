@@ -75,8 +75,8 @@ export function createWebSocket(onState: StateCallback) {
 			const msg: WsMessage = { type: 'update', data: state };
 			ws.send(
 				JSON.stringify({
-					type: 'sendToGroup',
-					group: 'all',
+					type: 'event',
+					event: 'message',
 					dataType: 'json',
 					data: msg
 				})
