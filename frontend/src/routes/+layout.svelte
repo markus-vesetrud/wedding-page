@@ -1,10 +1,9 @@
-<script lang="ts">
-	let { children } = $props();
-</script>
+<script>import "../app.css";
+let { children } = $props();</script>
 
 <svelte:head>
 	<title>Our Wedding</title>
-	<meta name="description" content="Wedding gift registry & guest list" />
+	<meta name="description" content="Wedding gift registry &amp; guest list" />
 </svelte:head>
 
 <div class="app">
@@ -15,6 +14,7 @@
 		{@render children()}
 	</main>
 </div>
+
 
 <style>
 	:global(body) {
