@@ -14,9 +14,7 @@ app.http('negotiate', {
     }
 
     const client = new WebPubSubServiceClient(connectionString, hubName);
-    const token = await client.getClientAccessToken({
-      roles: ['webpubsub.joinLeaveGroup.all', 'webpubsub.sendToGroup.all'],
-    });
+    const token = await client.getClientAccessToken({roles: []});
 
     return {
       jsonBody: { url: token.url },

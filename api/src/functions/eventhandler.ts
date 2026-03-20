@@ -84,18 +84,14 @@ app.http('eventhandler', {
 
     const pubsubClient = new WebPubSubServiceClient(connectionString, hubName);
 
-    // On connect — send current state to the connecting client
+    // On connect — accept the connection
     if (ceType === 'azure.webpubsub.sys.connect') {
       const connectionId = req.headers.get('ce-connectionid') || '';
       ctx.log(`Client connecting: ${connectionId}`);
 
-      // Read current state and send it to this specific client
-      const state = await readState();
-
-      // We can't send messages during connect, so we handle it via connected event
       return {
         jsonBody: {
-          groups: ['all'],
+          groups: [],
           subprotocol: 'json.webpubsub.azure.v1',
         },
         headers: { 'content-type': 'application/json' },
