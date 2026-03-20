@@ -2,6 +2,7 @@ plan.md
 infra/pubsub-docs.txt
 infra/static-sites-docs.txt
 infra/storage-account-docs.txt
+svelte.docs.txt
 
 dist/
 .env
