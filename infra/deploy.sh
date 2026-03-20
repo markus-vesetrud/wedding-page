@@ -39,7 +39,7 @@ az account show --output none 2>/dev/null || {
   az login
 }
 
-# -- 2. Create resource group --
+# -- 2. Create resource group & deploy infra --
 if [ "$SKIP_INFRA" = true ]; then
   echo "> Skipping infrastructure deployment (-s flag)"
   echo ""
@@ -52,8 +52,12 @@ if [ "$SKIP_INFRA" = true ]; then
     --name "$SWA_NAME" \
     --resource-group "$RESOURCE_GROUP" \
     --query 'defaultHostname' --output tsv)"
+  FUNC_NAME=$(az functionapp list \
+    --resource-group "$RESOURCE_GROUP" \
+    --query '[0].name' --output tsv)
 
   echo "    Static Web App : $SWA_NAME"
+  echo "    Function App   : $FUNC_NAME"
   echo ""
 else
   echo "> Creating resource group '$RESOURCE_GROUP' in '$LOCATION'..."
@@ -72,12 +76,14 @@ else
 
   SWA_NAME=$(echo "$DEPLOY_OUTPUT" | jq -r '.staticWebAppName.value')
   SWA_URL=$(echo "$DEPLOY_OUTPUT" | jq -r '.staticWebAppUrl.value')
+  FUNC_NAME=$(echo "$DEPLOY_OUTPUT" | jq -r '.functionAppName.value')
   STORAGE_NAME=$(echo "$DEPLOY_OUTPUT" | jq -r '.storageAccountName.value')
   PUBSUB_NAME=$(echo "$DEPLOY_OUTPUT" | jq -r '.webPubSubName.value')
 
   echo ""
   echo "  [OK] Infrastructure deployed"
   echo "    Static Web App : $SWA_NAME"
+  echo "    Function App   : $FUNC_NAME"
   echo "    Storage Account: $STORAGE_NAME"
   echo "    Web PubSub     : $PUBSUB_NAME"
   echo ""
@@ -88,9 +94,25 @@ echo "> Building frontend..."
 npm run build --prefix "$PROJECT_ROOT/frontend"
 
 echo "> Building API..."
-npm run build --prefix "$PROJECT_ROOT/api"
+cd "$PROJECT_ROOT/api"
+npm ci
+npm run build
 
-# -- 5. Get SWA deployment token --
+# -- 5. Deploy Function App (zip deploy via az cli) --
+echo "> Deploying Function App..."
+npm ci --omit=dev
+ZIP_FILE="/tmp/func-deploy-$$.zip"
+rm -f "$ZIP_FILE"
+zip -rq "$ZIP_FILE" host.json package.json package-lock.json dist node_modules
+az functionapp deployment source config-zip \
+  --resource-group "$RESOURCE_GROUP" \
+  --name "$FUNC_NAME" \
+  --src "$ZIP_FILE"
+rm -f "$ZIP_FILE"
+npm ci
+cd ..
+
+# -- 6. Get SWA deployment token --
 echo "> Retrieving SWA deployment token..."
 DEPLOY_TOKEN=$(az staticwebapp secrets list \
   --name "$SWA_NAME" \
@@ -98,16 +120,14 @@ DEPLOY_TOKEN=$(az staticwebapp secrets list \
   --query 'properties.apiKey' \
   --output tsv)
 
-# -- 6. Deploy with SWA CLI --
-echo "> Deploying app via SWA CLI..."
+# -- 7. Deploy frontend to SWA --
+echo "> Deploying frontend via SWA CLI..."
 npx --yes @azure/static-web-apps-cli deploy \
   "$PROJECT_ROOT/frontend/build" \
-  --api-location "$PROJECT_ROOT/api" \
-  --api-language "node" \
-  --api-version "22" \
   --swa-config-location "$PROJECT_ROOT" \
   --deployment-token "$DEPLOY_TOKEN" \
-  --env production
+  --env production \
+  --verbose=info
 
 echo ""
 echo "==========================================="

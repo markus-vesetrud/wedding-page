@@ -20,6 +20,7 @@ jobs:
     outputs:
       swa-name: ${{ steps.bicep.outputs.swaName }}
       swa-url: ${{ steps.bicep.outputs.swaUrl }}
+      func-name: ${{ steps.bicep.outputs.funcName }}
     steps:
       - uses: actions/checkout@v4
 
@@ -43,26 +44,16 @@ jobs:
 
           SWA_NAME=$(echo "$DEPLOY_OUTPUT" | jq -r '.staticWebAppName.value')
           SWA_URL=$(echo "$DEPLOY_OUTPUT" | jq -r '.staticWebAppUrl.value')
+          FUNC_NAME=$(echo "$DEPLOY_OUTPUT" | jq -r '.functionAppName.value')
 
           echo "swaName=$SWA_NAME" >> "$GITHUB_OUTPUT"
           echo "swaUrl=$SWA_URL" >> "$GITHUB_OUTPUT"
+          echo "funcName=$FUNC_NAME" >> "$GITHUB_OUTPUT"
 
           echo "### Infrastructure Deployed" >> "$GITHUB_STEP_SUMMARY"
           echo "- **SWA**: $SWA_NAME" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Function App**: $FUNC_NAME" >> "$GITHUB_STEP_SUMMARY"
           echo "- **URL**: $SWA_URL" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Get SWA deployment token
-        id: token
-        run: |
-          TOKEN=$(az staticwebapp secrets list \
-            --name "${{ steps.bicep.outputs.swaName }}" \
-            --resource-group "$RESOURCE_GROUP" \
-            --query 'properties.apiKey' --output tsv)
-          echo "::add-mask::$TOKEN"
-          echo "deploymentToken=$TOKEN" >> "$GITHUB_OUTPUT"
-
-    # Make token available to next job via environment
-    # (stored masked in outputs is fine for same-workflow jobs)
 
   deploy-app:
     name: Build & Deploy App
@@ -94,6 +85,16 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Deploy Function App
+        working-directory: api
+        run: |
+          npm ci --omit=dev
+          zip -r /tmp/func-deploy.zip . -x "src/*" "tsconfig.json" "local.settings.json" ".git*" ".funcignore"
+          az functionapp deployment source config-zip \
+            --resource-group "$RESOURCE_GROUP" \
+            --name "${{ needs.deploy-infra.outputs.func-name }}" \
+            --src /tmp/func-deploy.zip
+
       - name: Get SWA deployment token
         id: token
         run: |
@@ -111,9 +112,7 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: upload
           app_location: frontend/build
-          api_location: api
           skip_app_build: true
-          skip_api_build: true
 
       - name: Summary
         run: |

@@ -3,16 +3,13 @@
   "configurations": {
     "wedding": {
       "appLocation": "frontend",
-      "apiLocation": "api",
       "outputLocation": "build",
       "appBuildCommand": "npm run build",
-      "apiBuildCommand": "npm run build",
       "run": "npm run dev",
       "appDevserverUrl": "http://localhost:5173",
+      "apiDevserverUrl": "http://localhost:7071",
       "appName": "wedding-swa-kteojf7mxy2qa",
-      "resourceGroup": "rg-wedding-page",
-      "apiLanguage": "node",
-      "apiVersion": "22"
+      "resourceGroup": "rg-wedding-page"
     }
   }
 }
