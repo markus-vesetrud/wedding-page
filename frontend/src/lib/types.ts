@@ -1,15 +1,28 @@
-/** A single item in any list */
-export interface ListItem {
+
+interface Item {
 	id: string;
-	text: string;
+	name: string;
 	checked: boolean;
+	updatedAt: Date;
+}
+export interface Guest extends Item{
+	allergies?: string;
+}
+
+export interface Cake extends Item {
+	servings: number;
+	bakerName?: string;
+}
+
+export interface Gift extends Item {
+	gifterName?: string;
 }
 
 /** The full persisted state */
 export interface AppState {
-	gifts: ListItem[];
-	guests: ListItem[];
-	cakes: ListItem[];
+	gifts: Gift[];
+	guests: Guest[];
+	cakes: Cake[];
 }
 
 /** Messages sent over the WebSocket */

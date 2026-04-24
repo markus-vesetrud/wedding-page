@@ -8,26 +8,85 @@ const hubName = 'wedding';
 const containerName = 'wedding-data';
 const blobName = 'state.json';
 
-interface ListItem {
+interface Item {
   id: string;
-  text: string;
+  name: string;
   checked: boolean;
+  updatedAt: string;
+}
+
+interface Guest extends Item {
+  allergies?: string;
+}
+
+interface Cake extends Item {
+  servings: number;
+  bakerName?: string;
+}
+
+interface Gift extends Item {
+  gifterName?: string;
 }
 
 interface AppState {
-  gifts: ListItem[];
-  guests: ListItem[];
-  cakes: ListItem[];
+  gifts: Gift[];
+  guests: Guest[];
+  cakes: Cake[];
 }
 
 const defaultState: AppState = { gifts: [], guests: [], cakes: [] };
 
 function normalizeState(input: unknown): AppState {
   const state = input as Partial<AppState> | undefined;
+
+  const normalizeItem = (raw: unknown): Item => {
+    const item = raw as Partial<Item> & { text?: string };
+    return {
+      id: item.id ?? Math.random().toString(36).slice(2, 10),
+      name: item.name ?? item.text ?? '',
+      checked: Boolean(item.checked),
+      updatedAt: item.updatedAt ?? new Date().toISOString(),
+    };
+  };
+
+  const normalizeGifts = (raw: unknown): Gift[] => {
+    if (!Array.isArray(raw)) return [];
+    return raw.map((entry) => {
+      const gift = entry as Partial<Gift> & { text?: string };
+      return {
+        ...normalizeItem(gift),
+        gifterName: gift.gifterName,
+      };
+    });
+  };
+
+  const normalizeGuests = (raw: unknown): Guest[] => {
+    if (!Array.isArray(raw)) return [];
+    return raw.map((entry) => {
+      const guest = entry as Partial<Guest> & { text?: string };
+      return {
+        ...normalizeItem(guest),
+        allergies: guest.allergies,
+      };
+    });
+  };
+
+  const normalizeCakes = (raw: unknown): Cake[] => {
+    if (!Array.isArray(raw)) return [];
+    return raw.map((entry) => {
+      const cake = entry as Partial<Cake> & { text?: string };
+      return {
+        ...normalizeItem(cake),
+        servings: typeof cake.servings === 'number' ? cake.servings : 0,
+        bakerName: cake.bakerName,
+      };
+    });
+  };
+
   return {
-    gifts: Array.isArray(state?.gifts) ? state.gifts : [],
-    guests: Array.isArray(state?.guests) ? state.guests : [],
-    cakes: Array.isArray(state?.cakes) ? state.cakes : [],
+    gifts: normalizeGifts(state?.gifts),
+    guests: normalizeGuests(state?.guests),
+    cakes: normalizeCakes(state?.cakes),
   };
 }
 
