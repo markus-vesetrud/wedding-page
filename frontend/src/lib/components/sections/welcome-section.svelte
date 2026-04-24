@@ -1,6 +1,6 @@
-<section id="info" class="scroll-mt-20 py-8 md:py-10">
+<section id="info" class="scroll-mt-28 snap-start snap-always min-h-[100svh] pb-[90svh] pt-20 md:pt-24">
 	<div class="space-y-4">
-		<h2 class="text-2xl font-semibold tracking-tight md:text-3xl">Velkommen til Malin og Markus sitt bryllup! 💍</h2>
+		<h2 class="text-3xl font-semibold tracking-tight md:text-4xl">Velkommen til Malin og Markus sitt bryllup!</h2>
 		<p class="text-muted-foreground max-w-3xl leading-relaxed">
 			Vi gleder oss veldig til å møte dere og feire denne dagen sammen. På denne siden kan du bekrefte at du kommer,
 			og huke av på gaver og kaker slik at vi unngår duplikater.

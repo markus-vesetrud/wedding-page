@@ -12,11 +12,21 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 
 	type ListKind = 'gift' | 'guest' | 'cake';
+	type SectionId = 'info' | 'gjester' | 'gaver' | 'kaker';
+
+	const sectionTabs: Array<{ id: SectionId; label: string }> = [
+		{ id: 'info', label: 'Info' },
+		{ id: 'gjester', label: 'Gjesteliste' },
+		{ id: 'gaver', label: 'Gaver' },
+		{ id: 'kaker', label: 'Kaker' }
+	];
 
 	let gifts = $state<Gift[]>([]);
 	let guests = $state<Guest[]>([]);
 	let cakes = $state<Cake[]>([]);
 	let connected = $state(false);
+	let activeSection = $state<SectionId>('info');
+	let showConnectionStatus = $state(true);
 	let newGift = $state('');
 	let newGuest = $state('');
 	let newCake = $state('');
@@ -35,6 +45,35 @@
 	let uncheckModalActor = $state('');
 
 	let ws: ReturnType<typeof createWebSocket> | null = null;
+	let sectionObserver: IntersectionObserver | null = null;
+	let hideConnectionStatusTimer: ReturnType<typeof setTimeout> | null = null;
+
+	const stickyOffset = 92;
+
+	function updateActiveSectionFromViewport() {
+		const focusLine = window.scrollY + window.innerHeight * 0.45;
+		let chosen: SectionId = sectionTabs[0].id;
+
+		for (const tab of sectionTabs) {
+			const top = sectionTop(tab.id);
+			if (top === null) continue;
+			if (top <= focusLine) chosen = tab.id;
+		}
+
+		activeSection = chosen;
+	}
+
+	function sectionTop(id: SectionId) {
+		const section = document.getElementById(id);
+		if (!section) return null;
+		return section.getBoundingClientRect().top + window.scrollY - stickyOffset;
+	}
+
+	function scrollToSection(id: SectionId) {
+		const top = sectionTop(id);
+		if (top === null) return;
+		window.scrollTo({ top, behavior: 'smooth' });
+	}
 
 	function listName(kind: ListKind): ListName {
 		if (kind === 'gift') return 'gifts';
@@ -222,20 +261,69 @@
 				guests = state.guests ?? [];
 				cakes = state.cakes ?? [];
 				connected = true;
+				showConnectionStatus = true;
+				if (hideConnectionStatusTimer) clearTimeout(hideConnectionStatusTimer);
+				hideConnectionStatusTimer = setTimeout(() => {
+					showConnectionStatus = false;
+					hideConnectionStatusTimer = null;
+				}, 1500);
 			},
 			onDelta: (update) => {
 				applyDelta(update);
 			}
 		});
+
+		sectionObserver = new IntersectionObserver(
+			() => {
+				updateActiveSectionFromViewport();
+			},
+			{
+				root: null,
+				rootMargin: '-25% 0px -25% 0px',
+				threshold: [0, 0.25, 0.5, 0.75, 1]
+			}
+		);
+
+		for (const tab of sectionTabs) {
+			const section = document.getElementById(tab.id);
+			if (section) sectionObserver.observe(section);
+		}
+
+		window.addEventListener('scroll', updateActiveSectionFromViewport, { passive: true });
+		updateActiveSectionFromViewport();
 	});
 
 	onDestroy(() => {
 		ws?.close();
+		sectionObserver?.disconnect();
+		window.removeEventListener('scroll', updateActiveSectionFromViewport);
+		if (hideConnectionStatusTimer) clearTimeout(hideConnectionStatusTimer);
 	});
 </script>
 
 <div class="mx-auto w-full max-w-5xl px-4 py-8 md:px-6 lg:py-12">
-	<main class="divide-y divide-border">
+	<nav class="sticky top-2 z-30 mb-4 rounded-xl border bg-background/90 p-2 backdrop-blur">
+		<ul class="grid grid-cols-2 gap-2 md:grid-cols-4">
+			{#each sectionTabs as tab}
+				<li>
+					<button
+						type="button"
+						onclick={() => scrollToSection(tab.id)}
+						class={`w-full rounded-md px-3 py-2 text-sm font-medium transition-colors ${activeSection === tab.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
+					>
+						{tab.label}
+					</button>
+				</li>
+			{/each}
+		</ul>
+		{#if !connected || showConnectionStatus}
+			<p class="text-muted-foreground mt-2 text-center text-xs">
+				{connected ? 'Tilkoblet' : 'Kobler til ...'}
+			</p>
+		{/if}
+	</nav>
+
+	<main>
 		<WelcomeSection />
 		<GuestSection
 			{guests}
@@ -297,6 +385,18 @@
 		</Card.Root>
 	</div>
 {/if}
+
+<style>
+	:global(html) {
+		scroll-behavior: smooth;
+		scroll-snap-type: y mandatory;
+	}
+
+	:global(section[id]) {
+		scroll-snap-align: start;
+		scroll-snap-stop: always;
+	}
+</style>
 
 {#if uncheckModalOpen}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">

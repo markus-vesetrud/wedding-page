@@ -18,7 +18,7 @@
 	} = $props();
 </script>
 
-<section id="gaver" class="scroll-mt-20 py-8 md:py-10">
+<section id="gaver" class="scroll-mt-28 snap-start snap-always min-h-[100svh] pb-[90svh] pt-20 md:pt-24">
 	<div class="space-y-4">
 		<h2 class="text-2xl font-semibold tracking-tight">Gaveliste</h2>
 		<p class="text-muted-foreground text-sm leading-relaxed">

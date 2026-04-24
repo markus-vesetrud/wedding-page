@@ -21,7 +21,7 @@
 	const wanted = $derived(cakes.filter((cake) => !cake.checked));
 </script>
 
-<section id="kaker" class="scroll-mt-20 py-8 md:py-10">
+<section id="kaker" class="scroll-mt-28 snap-start snap-always min-h-[100svh] pb-[90svh] pt-20 md:pt-24">
 	<div class="space-y-4">
 		<h2 class="text-2xl font-semibold tracking-tight">Kakeoversikt</h2>
 		<p class="text-muted-foreground text-sm leading-relaxed">
