@@ -2,6 +2,14 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { createWebSocket } from '$lib/websocket';
 	import type { AppState, Cake, Gift, Guest, Item, ListName, WsDeltaMessage } from '$lib/types';
+	import WelcomeSection from '$lib/components/sections/welcome-section.svelte';
+	import GuestSection from '$lib/components/sections/guest-section.svelte';
+	import GiftSection from '$lib/components/sections/gift-section.svelte';
+	import CakeSection from '$lib/components/sections/cake-section.svelte';
+	import * as Card from '$lib/components/ui/card';
+	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import { Textarea } from '$lib/components/ui/textarea';
 
 	type ListKind = 'gift' | 'guest' | 'cake';
 
@@ -37,9 +45,7 @@
 
 	function upsertItem<T extends Item>(list: T[], item: T): T[] {
 		const index = list.findIndex((i) => i.id === item.id);
-		if (index === -1) {
-			return [...list, item];
-		}
+		if (index === -1) return [...list, item];
 		const newList = [...list];
 		newList[index] = item;
 		return newList;
@@ -50,12 +56,10 @@
 			gifts = upsertItem(gifts, update.item as Gift);
 			return;
 		}
-
 		if (update.list === 'guests') {
 			guests = upsertItem(guests, update.item as Guest);
 			return;
 		}
-
 		if (update.list === 'cakes') {
 			cakes = upsertItem(cakes, update.item as Cake);
 			return;
@@ -115,21 +119,28 @@
 	}
 
 	function checkModalLabel(kind: ListKind): string {
-		if (kind === 'gift') return 'Gifter name';
-		if (kind === 'cake') return 'Baker name';
-		return 'Allergies';
+		if (kind === 'gift') return 'Navn på gavegiver';
+		if (kind === 'cake') return 'Navn på baker';
+		return 'Allergier (kun synlig for arrangørene)';
 	}
 
 	function checkModalPlaceholder(kind: ListKind): string {
-		if (kind === 'gift') return 'Who is gifting this?';
-		if (kind === 'cake') return 'Who is baking this?';
-		return 'List allergies';
+		if (kind === 'gift') return 'Hvem gir denne gaven?';
+		if (kind === 'cake') return 'Hvem baker denne kaken?';
+		return 'F.eks. nøtter, gluten, laktose';
+	}
+
+	function checkModalHelpText(kind: ListKind): string {
+		if (kind === 'guest') {
+			return 'Denne informasjonen brukes kun til planlegging av mat og vises ikke i gjestelisten.';
+		}
+		return 'Dette navnet brukes for å vise hvem som har reservert punktet.';
 	}
 
 	async function applyCheckModal() {
 		const value = checkModalMeta.trim();
 		if (!value) {
-			checkModalError = `${checkModalLabel(checkModalKind)} is required.`;
+			checkModalError = `${checkModalLabel(checkModalKind)} må fylles ut.`;
 			return;
 		}
 
@@ -140,7 +151,6 @@
 			[field]: value
 		});
 		if (update) applyDelta(update);
-
 		closeCheckModal();
 	}
 
@@ -148,11 +158,9 @@
 		const list = listName(uncheckModalKind);
 		const update = await callListEndpoint(list, 'unchecked', { id: uncheckModalItemId });
 		if (update) applyDelta(update);
-
 		closeUncheckModal();
 	}
 
-	// -- Gift actions --
 	async function addGift() {
 		const name = newGift.trim();
 		if (!name) return;
@@ -165,13 +173,12 @@
 		const item = gifts.find((g) => g.id === id);
 		if (!item) return;
 		if (item.checked) {
-			openUncheckModal('gift', item.id, item.name, item.gifterName || 'Unknown gifter');
+			openUncheckModal('gift', item.id, item.name, item.gifterName || 'Ukjent gavegiver');
 			return;
 		}
 		openCheckModal('gift', item.id, item.name, item.gifterName || '');
 	}
 
-	// -- Guest actions --
 	async function addGuest() {
 		const name = newGuest.trim();
 		if (!name) return;
@@ -184,13 +191,12 @@
 		const item = guests.find((g) => g.id === id);
 		if (!item) return;
 		if (item.checked) {
-			openUncheckModal('guest', item.id, item.name, item.allergies || 'Unknown details');
+			openUncheckModal('guest', item.id, item.name, 'Privat');
 			return;
 		}
 		openCheckModal('guest', item.id, item.name, item.allergies || '');
 	}
 
-	// -- Cake actions --
 	async function addCake() {
 		const name = newCake.trim();
 		if (!name) return;
@@ -203,7 +209,7 @@
 		const item = cakes.find((c) => c.id === id);
 		if (!item) return;
 		if (item.checked) {
-			openUncheckModal('cake', item.id, item.name, item.bakerName || 'Unknown baker');
+			openUncheckModal('cake', item.id, item.name, item.bakerName || 'Ukjent baker');
 			return;
 		}
 		openCheckModal('cake', item.id, item.name, item.bakerName || '');
@@ -228,249 +234,89 @@
 	});
 </script>
 
-<div class="status" class:online={connected}>
-	{connected ? '🟢 Connected' : '🔴 Connecting…'}
+<div class="mx-auto w-full max-w-5xl px-4 py-8 md:px-6 lg:py-12">
+	<main class="divide-y divide-border">
+		<WelcomeSection />
+		<GuestSection
+			{guests}
+			newGuest={newGuest}
+			onNewGuestChange={(value) => (newGuest = value)}
+			onAddGuest={addGuest}
+			onToggleGuest={toggleGuest}
+		/>
+		<GiftSection
+			{gifts}
+			newGift={newGift}
+			onNewGiftChange={(value) => (newGift = value)}
+			onAddGift={addGift}
+			onToggleGift={toggleGift}
+		/>
+		<CakeSection
+			{cakes}
+			newCake={newCake}
+			onNewCakeChange={(value) => (newCake = value)}
+			onAddCake={addCake}
+			onToggleCake={toggleCake}
+		/>
+	</main>
 </div>
 
-<section>
-	<h2>🎁 Gift Registry</h2>
-	<form onsubmit={(e) => { e.preventDefault(); addGift(); }}>
-		<input
-			type="text"
-			bind:value={newGift}
-			placeholder="Add a gift…"
-		/>
-		<button type="submit">Add</button>
-	</form>
-	<ul>
-		{#each gifts as gift (gift.id)}
-			<li class:checked={gift.checked}>
-				<label>
-					<input type="checkbox" checked={gift.checked} onchange={() => toggleGift(gift.id)} />
-					<span>{gift.name}</span>
-				</label>
-			</li>
-		{/each}
-	</ul>
-</section>
-
-<section>
-	<h2>🎂 Cake List</h2>
-	<form onsubmit={(e) => { e.preventDefault(); addCake(); }}>
-		<input
-			type="text"
-			bind:value={newCake}
-			placeholder="Add a cake…"
-		/>
-		<button type="submit">Add</button>
-	</form>
-	<ul>
-		{#each cakes as cake (cake.id)}
-			<li class:checked={cake.checked}>
-				<label>
-					<input type="checkbox" checked={cake.checked} onchange={() => toggleCake(cake.id)} />
-					<span>{cake.name}</span>
-				</label>
-			</li>
-		{/each}
-	</ul>
-</section>
-
-<section>
-	<h2>📋 Guest List</h2>
-	<form onsubmit={(e) => { e.preventDefault(); addGuest(); }}>
-		<input
-			type="text"
-			bind:value={newGuest}
-			placeholder="Add a guest…"
-		/>
-		<button type="submit">Add</button>
-	</form>
-	<ul>
-		{#each guests as guest (guest.id)}
-			<li class:checked={guest.checked}>
-				<label>
-					<input type="checkbox" checked={guest.checked} onchange={() => toggleGuest(guest.id)} />
-					<span>{guest.name}</span>
-				</label>
-			</li>
-		{/each}
-	</ul>
-</section>
-
 {#if checkModalOpen}
-	<div class="modal-backdrop" role="presentation">
-		<div class="modal" role="dialog" aria-modal="true" aria-label="Confirm item details">
-			<h3>Before checking “{checkModalItemName}”</h3>
-			<p>Please fill in this field first.</p>
-			<label class="modal-label" for="check-meta">{checkModalLabel(checkModalKind)}</label>
-			<input
-				id="check-meta"
-				type="text"
-				bind:value={checkModalMeta}
-				placeholder={checkModalPlaceholder(checkModalKind)}
-			/>
-			{#if checkModalError}
-				<p class="modal-error">{checkModalError}</p>
-			{/if}
-			<div class="modal-actions">
-				<button type="button" class="secondary" onclick={closeCheckModal}>Cancel</button>
-				<button type="button" onclick={applyCheckModal}>Save and check</button>
-			</div>
-		</div>
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+		<Card.Root class="w-full max-w-md">
+			<Card.Header>
+				<Card.Title>Før du huker av “{checkModalItemName}”</Card.Title>
+				<Card.Description>{checkModalHelpText(checkModalKind)}</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				<label class="text-sm font-medium" for="check-meta">{checkModalLabel(checkModalKind)}</label>
+				{#if checkModalKind === 'guest'}
+					<Textarea
+						id="check-meta"
+						value={checkModalMeta}
+						oninput={(e: Event) => (checkModalMeta = (e.currentTarget as HTMLTextAreaElement).value)}
+						placeholder={checkModalPlaceholder(checkModalKind)}
+					/>
+				{:else}
+					<Input
+						id="check-meta"
+						type="text"
+						value={checkModalMeta}
+						oninput={(e: Event) => (checkModalMeta = (e.currentTarget as HTMLInputElement).value)}
+						placeholder={checkModalPlaceholder(checkModalKind)}
+					/>
+				{/if}
+				{#if checkModalError}
+					<p class="text-sm text-red-600">{checkModalError}</p>
+				{/if}
+				<div class="flex justify-end gap-2 pt-2">
+					<Button variant="outline" onclick={closeCheckModal}>Avbryt</Button>
+					<Button onclick={applyCheckModal}>Lagre og huk av</Button>
+				</div>
+			</Card.Content>
+		</Card.Root>
 	</div>
 {/if}
 
 {#if uncheckModalOpen}
-	<div class="modal-backdrop" role="presentation">
-		<div class="modal" role="dialog" aria-modal="true" aria-label="Confirm uncheck">
-			<h3>Uncheck “{uncheckModalItemName}”?</h3>
-			<p>
-				Recorded by: <strong>{uncheckModalActor}</strong>. Was this you?
-			</p>
-			<div class="modal-actions">
-				<button type="button" class="secondary" onclick={closeUncheckModal}>Cancel</button>
-				<button type="button" onclick={confirmUncheck}>Yes, uncheck</button>
-			</div>
-		</div>
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
+		<Card.Root class="w-full max-w-md">
+			<Card.Header>
+				<Card.Title>Fjern avhuking på “{uncheckModalItemName}”?</Card.Title>
+				{#if uncheckModalKind === 'guest'}
+					<Card.Description>
+						Allergiopplysninger for gjester er private. Bekreft bare hvis du vil endre din egen registrering.
+					</Card.Description>
+				{:else}
+					<Card.Description>Registrert av: {uncheckModalActor}.</Card.Description>
+				{/if}
+			</Card.Header>
+			<Card.Content>
+				<div class="flex justify-end gap-2">
+					<Button variant="outline" onclick={closeUncheckModal}>Avbryt</Button>
+					<Button onclick={confirmUncheck}>Ja, fjern</Button>
+				</div>
+			</Card.Content>
+		</Card.Root>
 	</div>
 {/if}
-
-<style>
-	.status {
-		text-align: center;
-		font-size: 0.85rem;
-		padding: 0.4rem;
-		color: #999;
-	}
-	.status.online {
-		color: #5a9a5a;
-	}
-
-	section {
-		background: white;
-		border-radius: 12px;
-		padding: 1.5rem;
-		margin-bottom: 1.5rem;
-		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-	}
-
-	h2 {
-		margin: 0 0 1rem;
-		font-weight: 400;
-		color: #6b5b4f;
-	}
-
-	form {
-		display: flex;
-		gap: 0.5rem;
-		margin-bottom: 1rem;
-	}
-
-	input[type='text'] {
-		flex: 1;
-		padding: 0.5rem 0.75rem;
-		border: 1px solid #ddd;
-		border-radius: 8px;
-		font-size: 0.95rem;
-	}
-
-	button {
-		padding: 0.5rem 1rem;
-		background: #6b5b4f;
-		color: white;
-		border: none;
-		border-radius: 8px;
-		cursor: pointer;
-		font-size: 0.9rem;
-	}
-	button:hover {
-		background: #5a4a3f;
-	}
-
-	ul {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-	}
-
-	li {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0.5rem 0;
-		border-bottom: 1px solid #f0ede8;
-	}
-	li:last-child {
-		border-bottom: none;
-	}
-
-	li.checked span {
-		text-decoration: line-through;
-		opacity: 0.5;
-	}
-
-	label {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		cursor: pointer;
-		flex: 1;
-	}
-
-	.modal-backdrop {
-		position: fixed;
-		inset: 0;
-		background: rgba(0, 0, 0, 0.35);
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		padding: 1rem;
-		z-index: 10;
-	}
-
-	.modal {
-		background: white;
-		border-radius: 12px;
-		padding: 1rem;
-		width: min(28rem, 100%);
-		box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-	}
-
-	.modal h3 {
-		margin: 0 0 0.5rem;
-		font-weight: 500;
-	}
-
-	.modal p {
-		margin: 0 0 0.75rem;
-	}
-
-	.modal-label {
-		display: block;
-		font-size: 0.9rem;
-		margin-bottom: 0.4rem;
-	}
-
-	.modal-error {
-		font-size: 0.85rem;
-		color: #c44;
-		margin-top: 0.4rem;
-	}
-
-	.modal-actions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 0.5rem;
-		margin-top: 0.75rem;
-	}
-
-	button.secondary {
-		background: #ddd;
-		color: #333;
-	}
-
-	button.secondary:hover {
-		background: #cfcfcf;
-	}
-</style>

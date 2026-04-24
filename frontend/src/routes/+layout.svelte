@@ -1,47 +1,23 @@
-<script>import "../app.css";
-let { children } = $props();</script>
+<script>
+	import '../app.css';
+
+	let { children } = $props();
+</script>
 
 <svelte:head>
-	<title>Our Wedding</title>
-	<meta name="description" content="Wedding gift registry &amp; guest list" />
+	<title>Bryllupsside</title>
+	<meta
+		name="description"
+		content="Praktisk informasjon, gjesteliste, gaveliste og kakeoversikt for bryllupet"
+	/>
 </svelte:head>
 
-<div class="app">
-	<header>
-		<h1>💍 Our Wedding</h1>
+<div class="min-h-screen bg-background text-foreground">
+	<header class="border-b bg-card/70">
+		<div class="mx-auto flex w-full max-w-5xl flex-col gap-2 px-4 py-8 md:px-6">
+			<p class="text-muted-foreground text-sm">31. juli 2027 • Nittedal kirke</p>
+			<h1 class="text-3xl font-semibold tracking-tight md:text-4xl">Malin &amp; Markus sitt bryllup</h1>
+		</div>
 	</header>
-	<main>
-		{@render children()}
-	</main>
+	{@render children()}
 </div>
-
-
-<style>
-	:global(body) {
-		margin: 0;
-		font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-		background: #faf8f5;
-		color: #333;
-	}
-
-	.app {
-		max-width: 800px;
-		margin: 0 auto;
-		padding: 1rem;
-	}
-
-	header {
-		text-align: center;
-		padding: 2rem 0 1rem;
-	}
-
-	header h1 {
-		font-size: 2rem;
-		font-weight: 300;
-		color: #6b5b4f;
-	}
-
-	main {
-		padding: 1rem 0;
-	}
-</style>
