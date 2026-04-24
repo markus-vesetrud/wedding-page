@@ -1,6 +1,6 @@
 # Wedding Page
 
-A real-time collaborative wedding planning app with a gift registry and guest list. Changes sync instantly across all connected browsers via WebSockets.
+A real-time collaborative wedding planning app with a gift registry, guest list, and cake list. Changes sync instantly across all connected browsers via WebSockets.
 
 Built with **SvelteKit** (frontend), **Azure Functions** (API), **Azure Web PubSub** (real-time), and **Azure Blob Storage** (persistence).
 

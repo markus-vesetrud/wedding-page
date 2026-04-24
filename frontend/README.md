@@ -6,7 +6,7 @@ The wedding page frontend, built with SvelteKit 2 and Svelte 5, compiled to a st
 
 | File | Purpose |
 |---|---|
-| `src/routes/+page.svelte` | Main page — gift registry and guest list with real-time sync |
+| `src/routes/+page.svelte` | Main page — gift registry, guest list, and cake list with real-time sync |
 | `src/lib/websocket.ts` | WebSocket client — negotiates connection, sends/receives state |
 | `src/lib/types.ts` | Shared TypeScript types (`AppState`, `ListItem`, `WsMessage`) |
 | `static/staticwebapp.config.json` | SWA routing — SPA fallback + API route permissions |

@@ -17,9 +17,19 @@ interface ListItem {
 interface AppState {
   gifts: ListItem[];
   guests: ListItem[];
+  cakes: ListItem[];
 }
 
-const defaultState: AppState = { gifts: [], guests: [] };
+const defaultState: AppState = { gifts: [], guests: [], cakes: [] };
+
+function normalizeState(input: unknown): AppState {
+  const state = input as Partial<AppState> | undefined;
+  return {
+    gifts: Array.isArray(state?.gifts) ? state.gifts : [],
+    guests: Array.isArray(state?.guests) ? state.guests : [],
+    cakes: Array.isArray(state?.cakes) ? state.cakes : [],
+  };
+}
 
 async function getContainerClient() {
   const blobService = BlobServiceClient.fromConnectionString(storageConnectionString);
@@ -36,7 +46,7 @@ async function readState(): Promise<AppState> {
     if (!exists) return { ...defaultState };
     const downloaded = await blob.download();
     const body = await streamToString(downloaded.readableStreamBody!);
-    return JSON.parse(body) as AppState;
+    return normalizeState(JSON.parse(body));
   } catch {
     return { ...defaultState };
   }
