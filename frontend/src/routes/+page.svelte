@@ -12,10 +12,14 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 
 	type ListKind = 'gift' | 'guest' | 'cake';
-	type SectionId = 'info' | 'gjester' | 'gaver' | 'kaker';
+	type SectionId = 'program' | 'gjester' | 'gaver' | 'kaker';
+
+	const TAB_WRAP_THRESHOLD_PX = 420;
+	const TAB_STICKY_TOP_PX = 8;
+	const TAB_SCROLL_MARGIN_GAP_PX = 8;
 
 	const sectionTabs: Array<{ id: SectionId; label: string }> = [
-		{ id: 'info', label: 'Info' },
+		{ id: 'program', label: 'Program' },
 		{ id: 'gjester', label: 'Gjesteliste' },
 		{ id: 'gaver', label: 'Gaver' },
 		{ id: 'kaker', label: 'Kaker' }
@@ -25,7 +29,7 @@
 	let guests = $state<Guest[]>([]);
 	let cakes = $state<Cake[]>([]);
 	let connected = $state(false);
-	let activeSection = $state<SectionId>('info');
+	let activeSection = $state<SectionId>('program');
 	let showConnectionStatus = $state(true);
 	let newGift = $state('');
 	let newGuest = $state('');
@@ -45,10 +49,34 @@
 	let uncheckModalActor = $state('');
 
 	let ws: ReturnType<typeof createWebSocket> | null = null;
-	let sectionObserver: IntersectionObserver | null = null;
 	let hideConnectionStatusTimer: ReturnType<typeof setTimeout> | null = null;
+	let tabsNavElement: HTMLElement | null = null;
+	let isTabsWrapped = $state(false);
+	let tabBarHeightPx = $state(72);
+	let scrollRafId: number | null = null;
 
-	const stickyOffset = 92;
+	function calculateTabHeight(
+		viewportWidth: number,
+		showsConnectionStatus: boolean,
+		measuredHeight: number | null
+	): number {
+		const wraps = viewportWidth < TAB_WRAP_THRESHOLD_PX;
+		const estimatedBaseHeight = wraps ? 104 : 56;
+		const estimatedStatusHeight = showsConnectionStatus ? 24 : 0;
+		const estimatedHeight = estimatedBaseHeight + estimatedStatusHeight;
+		if (measuredHeight === null) return estimatedHeight;
+		return Math.max(measuredHeight, estimatedHeight);
+	}
+
+	function syncTabMetrics() {
+		isTabsWrapped = window.innerWidth < TAB_WRAP_THRESHOLD_PX;
+		const measuredHeight = tabsNavElement ? Math.ceil(tabsNavElement.getBoundingClientRect().height) : null;
+		tabBarHeightPx = calculateTabHeight(window.innerWidth, !connected || showConnectionStatus, measuredHeight);
+	}
+
+	function stickyOffset() {
+		return tabBarHeightPx + TAB_STICKY_TOP_PX + TAB_SCROLL_MARGIN_GAP_PX;
+	}
 
 	function updateActiveSectionFromViewport() {
 		const focusLine = window.scrollY + window.innerHeight * 0.45;
@@ -63,10 +91,18 @@
 		activeSection = chosen;
 	}
 
+	function queueActiveSectionUpdate() {
+		if (scrollRafId !== null) return;
+		scrollRafId = requestAnimationFrame(() => {
+			scrollRafId = null;
+			updateActiveSectionFromViewport();
+		});
+	}
+
 	function sectionTop(id: SectionId) {
 		const section = document.getElementById(id);
 		if (!section) return null;
-		return section.getBoundingClientRect().top + window.scrollY - stickyOffset;
+		return section.getBoundingClientRect().top + window.scrollY - stickyOffset();
 	}
 
 	function scrollToSection(id: SectionId) {
@@ -255,6 +291,15 @@
 	}
 
 	onMount(() => {
+		const onResize = () => {
+			syncTabMetrics();
+			queueActiveSectionUpdate();
+		};
+
+		const onScroll = () => {
+			queueActiveSectionUpdate();
+		};
+
 		ws = createWebSocket({
 			onState: (state: AppState) => {
 				gifts = state.gifts ?? [];
@@ -262,9 +307,11 @@
 				cakes = state.cakes ?? [];
 				connected = true;
 				showConnectionStatus = true;
+				requestAnimationFrame(syncTabMetrics);
 				if (hideConnectionStatusTimer) clearTimeout(hideConnectionStatusTimer);
 				hideConnectionStatusTimer = setTimeout(() => {
 					showConnectionStatus = false;
+					syncTabMetrics();
 					hideConnectionStatusTimer = null;
 				}, 1500);
 			},
@@ -273,43 +320,39 @@
 			}
 		});
 
-		sectionObserver = new IntersectionObserver(
-			() => {
-				updateActiveSectionFromViewport();
-			},
-			{
-				root: null,
-				rootMargin: '-25% 0px -25% 0px',
-				threshold: [0, 0.25, 0.5, 0.75, 1]
-			}
-		);
+		syncTabMetrics();
+		window.addEventListener('resize', onResize);
+		window.addEventListener('scroll', onScroll, { passive: true });
+		// queueActiveSectionUpdate();
 
-		for (const tab of sectionTabs) {
-			const section = document.getElementById(tab.id);
-			if (section) sectionObserver.observe(section);
-		}
-
-		window.addEventListener('scroll', updateActiveSectionFromViewport, { passive: true });
-		updateActiveSectionFromViewport();
+		return () => {
+			window.removeEventListener('resize', onResize);
+			window.removeEventListener('scroll', onScroll);
+			// if (scrollRafId !== null) {
+			// 	cancelAnimationFrame(scrollRafId);
+			// 	scrollRafId = null;
+			// }
+		};
 	});
 
 	onDestroy(() => {
 		ws?.close();
-		sectionObserver?.disconnect();
-		window.removeEventListener('scroll', updateActiveSectionFromViewport);
 		if (hideConnectionStatusTimer) clearTimeout(hideConnectionStatusTimer);
 	});
 </script>
 
-<div class="mx-auto w-full max-w-5xl px-4 py-8 md:px-6 lg:py-12">
-	<nav class="sticky top-2 z-30 mb-4 rounded-xl border bg-background/90 p-2 backdrop-blur">
-		<ul class="grid grid-cols-2 gap-2 md:grid-cols-4">
+<div
+	class="mx-auto w-full max-w-3xl px-4 py-8 md:px-6 lg:py-12"
+	style={`--tabs-height: ${tabBarHeightPx}px; --tabs-sticky-top: ${TAB_STICKY_TOP_PX}px; --tabs-scroll-gap: ${TAB_SCROLL_MARGIN_GAP_PX}px; --tabs-wrap-threshold: ${TAB_WRAP_THRESHOLD_PX}px;`}
+>
+	<nav bind:this={tabsNavElement} class="sticky top-2 z-30 mb-4 rounded-xl border bg-background/90 p-2 backdrop-blur">
+		<ul class={`grid gap-2 ${isTabsWrapped ? 'grid-cols-2' : 'grid-cols-4'}`}>
 			{#each sectionTabs as tab}
 				<li>
 					<button
 						type="button"
 						onclick={() => scrollToSection(tab.id)}
-						class={`w-full rounded-md px-3 py-2 text-sm font-medium transition-colors ${activeSection === tab.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
+						class={`min-w-[4.0rem] w-full rounded-md px-2 py-2 text-sm font-medium transition-colors ${activeSection === tab.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
 					>
 						{tab.label}
 					</button>
@@ -327,6 +370,7 @@
 		<WelcomeSection />
 		<GuestSection
 			{guests}
+			isLoading={!connected}
 			newGuest={newGuest}
 			onNewGuestChange={(value) => (newGuest = value)}
 			onAddGuest={addGuest}
@@ -334,6 +378,7 @@
 		/>
 		<GiftSection
 			{gifts}
+			isLoading={!connected}
 			newGift={newGift}
 			onNewGiftChange={(value) => (newGift = value)}
 			onAddGift={addGift}
@@ -341,6 +386,7 @@
 		/>
 		<CakeSection
 			{cakes}
+			isLoading={!connected}
 			newCake={newCake}
 			onNewCakeChange={(value) => (newCake = value)}
 			onAddCake={addCake}
@@ -392,9 +438,16 @@
 		scroll-snap-type: y mandatory;
 	}
 
+	:global(header[data-snap]) {
+		scroll-snap-align: start;
+        scroll-snap-stop: always;
+	}
+
 	:global(section[id]) {
 		scroll-snap-align: start;
-		scroll-snap-stop: always;
+        scroll-snap-stop: always;
+		scroll-margin-top: calc(var(--tabs-height, 72px) + var(--tabs-sticky-top, 8px) + var(--tabs-scroll-gap, 8px));
+		min-height: calc(100svh - var(--tabs-height, 72px));
 	}
 </style>
 

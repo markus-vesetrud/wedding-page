@@ -5,12 +5,14 @@
 
 	let {
 		guests,
+		isLoading,
 		newGuest,
 		onNewGuestChange,
 		onAddGuest,
 		onToggleGuest
 	}: {
 		guests: Guest[];
+		isLoading: boolean;
 		newGuest: string;
 		onNewGuestChange: (value: string) => void;
 		onAddGuest: () => void;
@@ -18,29 +20,22 @@
 	} = $props();
 </script>
 
-<section id="gjester" class="scroll-mt-28 snap-start snap-always min-h-[100svh] pb-[90svh] pt-20 md:pt-24">
+<section id="gjester" class="pb-[50svh] pt-0">
 	<div class="space-y-4">
 		<h2 class="text-2xl font-semibold tracking-tight">Gjesteliste</h2>
 		<p class="text-muted-foreground text-sm leading-relaxed">
 			Finn navnet ditt og huk av for om du kommer. Allergier registreres kun når du markerer ditt eget navn, og vises ikke for andre.
 		</p>
-			<form
-				class="flex flex-col gap-3 sm:flex-row"
-				onsubmit={(e) => {
-					e.preventDefault();
-					onAddGuest();
-				}}
-			>
-				<Input
-					type="text"
-					value={newGuest}
-					oninput={(e: Event) => onNewGuestChange((e.currentTarget as HTMLInputElement).value)}
-					placeholder="Legg til gjest"
-				/>
-				<Button type="submit">Legg til</Button>
-			</form>
-
-			<ul class="space-y-2">
+		<ul class="space-y-2">
+			{#if isLoading && guests.length === 0}
+				{#each Array(4) as _, index (index)}
+					<li class="bg-muted/60 rounded-lg border p-3 animate-pulse">
+						<div class="h-4 w-2/3 rounded bg-muted"></div>
+					</li>
+				{/each}
+			{:else if guests.length === 0}
+				<li class="text-muted-foreground rounded-lg border border-dashed p-3 text-sm">Ingen gjester i listen ennå.</li>
+			{:else}
 				{#each guests as guest (guest.id)}
 					<li class="bg-muted/60 flex items-center justify-between rounded-lg border p-3">
 						<label class="flex items-center gap-3">
@@ -55,6 +50,7 @@
 						<span class="text-muted-foreground text-xs">{guest.checked ? 'Kommer' : 'Ikke bekreftet'}</span>
 					</li>
 				{/each}
-			</ul>
+			{/if}
+		</ul>
 	</div>
 </section>
