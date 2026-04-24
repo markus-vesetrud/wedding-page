@@ -10,9 +10,9 @@ Hosts the SvelteKit SPA. The Standard tier is required because the Free tier doe
 
 The SWA has `skipGithubActionWorkflowGeneration: true` because we manage the CI/CD workflow ourselves.
 
-### Function App + App Service Plan (B1)
+### Function App + App Service Plan (B1, Linux)
 
-A standalone Node.js 22 Function App on a Basic B1 plan. The B1 plan was chosen over Consumption (Y1) to eliminate cold starts (5-15 seconds on Consumption). B1 is always-on at ~€12/month.
+A standalone Node.js 22 Function App on a Basic B1 Linux plan. The B1 plan was chosen over Consumption (Y1) to eliminate cold starts (5-15 seconds on Consumption). B1 is always-on at ~€12/month.
 
 **Linked backend**: The `Microsoft.Web/staticSites/linkedBackends` resource connects the Function App to the SWA. This has two effects:
 1. The SWA proxies all `/api/*` requests to the Function App
@@ -70,6 +70,6 @@ The deployment script handles the full flow:
 | Config | Verdict | Notes |
 |---|---|---|
 | `cors: { allowedOrigins: ['*'] }` on Function App | **Not needed** | The SWA proxy handles CORS. Direct browser→Function App requests are blocked by the linked backend (401). Could be removed. |
-| `WEBSITE_NODE_DEFAULT_VERSION` app setting | **Redundant** | `nodeVersion: '~22'` in `siteConfig` already sets this. Both exist for belt-and-suspenders compatibility. Could remove one. |
+| `WEBSITE_NODE_DEFAULT_VERSION` app setting | **Not needed on Linux** | Linux apps use `linuxFxVersion` (for example `NODE|22-lts`) in `siteConfig` to select Node runtime. |
 | `buildProperties` on SWA | **Not needed in production** | Only used if deploying via the SWA GitHub Action's built-in build. Since we pre-build and deploy artifacts, these properties are informational only. |
 | `api/.funcignore` | **Not needed** | The deploy script explicitly lists files to include in the zip rather than using funcignore exclusions. |

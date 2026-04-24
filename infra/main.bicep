@@ -101,10 +101,14 @@ var appServicePlanName = 'wedding-plan-${uniqueSuffix}'
 
 resource appServicePlan 'Microsoft.Web/serverfarms@2025-03-01' = {
   name: appServicePlanName
+  kind: 'linux'
   location: location
   sku: {
     name: 'B1'
     tier: 'Basic'
+  }
+  properties: {
+    reserved: true
   }
 }
 
@@ -114,17 +118,16 @@ var functionAppName = 'wedding-api-${uniqueSuffix}'
 resource functionApp 'Microsoft.Web/sites@2025-03-01' = {
   name: functionAppName
   location: location
-  kind: 'functionapp'
+  kind: 'functionapp,linux'
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
     siteConfig: {
-      nodeVersion: '~22'
+      linuxFxVersion: 'NODE|22'
       alwaysOn: true
       appSettings: [
         { name: 'FUNCTIONS_EXTENSION_VERSION', value: '~4' }
         { name: 'FUNCTIONS_WORKER_RUNTIME', value: 'node' }
-        { name: 'WEBSITE_NODE_DEFAULT_VERSION', value: '~22' }
         { name: 'AzureWebJobsStorage', value: 'DefaultEndpointsProtocol=https;AccountName=${funcStorageAccount.name};AccountKey=${funcStorageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net' }
         { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: appInsights.properties.ConnectionString }
         { name: 'WEBPUBSUB_CONNECTION_STRING', value: webPubSub.listKeys().primaryConnectionString }
