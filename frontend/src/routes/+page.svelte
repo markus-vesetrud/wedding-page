@@ -5,9 +5,11 @@
 
 	let gifts = $state<ListItem[]>([]);
 	let guests = $state<ListItem[]>([]);
+	let cakes = $state<ListItem[]>([]);
 	let connected = $state(false);
 	let newGift = $state('');
 	let newGuest = $state('');
+	let newCake = $state('');
 
 	let ws: ReturnType<typeof createWebSocket> | null = null;
 
@@ -16,7 +18,11 @@
 	}
 
 	function currentState(): AppState {
-		return { gifts: $state.snapshot(gifts), guests: $state.snapshot(guests) };
+		return {
+			gifts: $state.snapshot(gifts),
+			guests: $state.snapshot(guests),
+			cakes: $state.snapshot(cakes)
+		};
 	}
 
 	function broadcastState() {
@@ -63,10 +69,31 @@
 		broadcastState();
 	}
 
+	// -- Cake actions --
+	function addCake() {
+		const text = newCake.trim();
+		if (!text) return;
+		cakes.push({ id: makeId(), text, checked: false });
+		newCake = '';
+		broadcastState();
+	}
+
+	function toggleCake(id: string) {
+		const item = cakes.find((c) => c.id === id);
+		if (item) item.checked = !item.checked;
+		broadcastState();
+	}
+
+	function removeCake(id: string) {
+		cakes = cakes.filter((c) => c.id !== id);
+		broadcastState();
+	}
+
 	onMount(() => {
 		ws = createWebSocket((state: AppState) => {
 			gifts = state.gifts;
 			guests = state.guests;
+			cakes = state.cakes;
 			connected = true;
 		});
 	});
@@ -98,6 +125,29 @@
 					<span>{gift.text}</span>
 				</label>
 				<button class="remove" onclick={() => removeGift(gift.id)}>✕</button>
+			</li>
+		{/each}
+	</ul>
+</section>
+
+<section>
+	<h2>🎂 Cake List</h2>
+	<form onsubmit={(e) => { e.preventDefault(); addCake(); }}>
+		<input
+			type="text"
+			bind:value={newCake}
+			placeholder="Add a cake…"
+		/>
+		<button type="submit">Add</button>
+	</form>
+	<ul>
+		{#each cakes as cake (cake.id)}
+			<li class:checked={cake.checked}>
+				<label>
+					<input type="checkbox" checked={cake.checked} onchange={() => toggleCake(cake.id)} />
+					<span>{cake.text}</span>
+				</label>
+				<button class="remove" onclick={() => removeCake(cake.id)}>✕</button>
 			</li>
 		{/each}
 	</ul>

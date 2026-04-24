@@ -1,4 +1,4 @@
-/** A single item in either the gift registry or guest list */
+/** A single item in any list */
 export interface ListItem {
 	id: string;
 	text: string;
@@ -9,6 +9,7 @@ export interface ListItem {
 export interface AppState {
 	gifts: ListItem[];
 	guests: ListItem[];
+	cakes: ListItem[];
 }
 
 /** Messages sent over the WebSocket */
