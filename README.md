@@ -31,11 +31,11 @@ Built with **SvelteKit** (frontend), **Azure Functions** (API), **Azure Web PubS
 
 2. **Browser → Web PubSub (WebSocket)**: On page load, the frontend calls `POST /api/negotiate`, which returns a `wss://` URL with an access token. The browser opens a WebSocket to Web PubSub using the `json.webpubsub.azure.v1` subprotocol, which allows structured JSON messaging.
 
-3. **Web PubSub → Function App (upstream events)**: When clients connect, disconnect, or send messages, Web PubSub forwards these as HTTP POST requests to the upstream URL configured in the hub settings. The upstream URL points to `https://<swa-hostname>/api/eventhandler` — it must go through the SWA (not directly to the Function App) because the linked backend setup blocks direct access with a 401.
+3. **Web PubSub → Function App (upstream events)**: When clients connect or disconnect, Web PubSub forwards these as HTTP POST requests to the upstream URL configured in the hub settings. The upstream URL points to `https://<swa-hostname>/api/eventhandler` — it must go through the SWA (not directly to the Function App) because the linked backend setup blocks direct access with a 401.
 
-4. **Function App → Blob Storage**: The eventhandler reads/writes `state.json` in a blob container to persist the gift and guest lists.
+4. **Browser → Function App (list actions)**: List changes call `POST /api/lists/{list}/{action}` (`add`, `checked`, `unchecked`) so only item-level mutations are sent.
 
-5. **Function App → Web PubSub (broadcast)**: After persisting state, the eventhandler uses the Web PubSub service SDK to broadcast the updated state to all connected clients via `sendToAll()`.
+5. **Function App → Blob Storage + Web PubSub**: The list action endpoints persist `state.json` and broadcast item-level updates (`item-added`, `item-checked`, `item-unchecked`) with `sendToAll()`.
 
 ### Why each config exists
 
@@ -65,18 +65,19 @@ wedding-page/
 ├── frontend/           # SvelteKit SPA (adapter-static)
 │   ├── src/
 │   │   ├── lib/
-│   │   │   ├── types.ts        # Shared types (AppState, ListItem, WsMessage)
-│   │   │   └── websocket.ts    # WebSocket client (negotiate, connect, send)
+│   │   │   ├── types.ts        # Shared types (AppState, specialized items, WsMessage)
+│   │   │   └── websocket.ts    # WebSocket client (negotiate, connect, receive state + deltas)
 │   │   └── routes/
-│   │       └── +page.svelte    # Main page (gift registry + guest list)
+│   │       └── +page.svelte    # Main page (gift registry + guest list + cake list)
 │   └── static/
 │       └── staticwebapp.config.json  # SWA routing config
 ├── api/                # Azure Functions (Node.js v4 programming model)
 │   ├── src/
 │   │   ├── index.ts             # Entry point (registers functions)
 │   │   └── functions/
-│   │       ├── negotiate.ts     # POST /api/negotiate — returns wss:// URL
-│   │       └── eventhandler.ts  # POST /api/eventhandler — upstream handler
+│   │       ├── negotiate.ts      # POST /api/negotiate — returns wss:// URL
+│   │       ├── eventhandler.ts   # POST /api/eventhandler — Web PubSub upstream handler
+│   │       └── listactions.ts    # POST /api/lists/{list}/{action} — item-level mutations
 │   ├── host.json                # Functions runtime config
 │   └── local.settings.json      # Local environment variables (gitignored)
 ├── infra/              # Azure infrastructure
@@ -121,7 +122,7 @@ The `swa start` command:
 - Proxies `/api/*` to `:7071` (your local Function App)
 - Serves on `:4280` with SWA behavior (routing rules, etc.)
 
-The `awps-tunnel` is needed because Web PubSub runs in Azure and needs to reach your local eventhandler for `connect`/`connected`/`disconnected` events and user messages.
+The `awps-tunnel` is needed because Web PubSub runs in Azure and needs to reach your local eventhandler for `connect`/`connected`/`disconnected` events.
 
 ## Deployment
 

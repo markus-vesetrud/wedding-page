@@ -1,13 +1,19 @@
-import type { AppState, WsMessage } from './types';
+import type { AppState, WsDeltaMessage, WsMessage } from './types';
 
 export type StateCallback = (state: AppState) => void;
+export type DeltaCallback = (update: WsDeltaMessage) => void;
+
+interface WebSocketHandlers {
+	onState: StateCallback;
+	onDelta: DeltaCallback;
+}
 
 /**
  * Connects to Azure Web PubSub via the /api/negotiate endpoint.
  * Calls `onState` whenever the server sends a full state snapshot.
  * Returns helpers to send updates and close the socket.
  */
-export function createWebSocket(onState: StateCallback) {
+export function createWebSocket(handlers: WebSocketHandlers) {
 	let ws: WebSocket | null = null;
 	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -28,19 +34,27 @@ export function createWebSocket(onState: StateCallback) {
 			ws.onmessage = (event) => {
 				try {
 					const envelope = JSON.parse(event.data);
-					// Web PubSub wraps messages in { type, ... }
-					// Server messages come as { type: 'message', data: ... }
+
 					let msg: WsMessage;
 					if (envelope.type === 'message' && envelope.data) {
 						msg = typeof envelope.data === 'string' ? JSON.parse(envelope.data) : envelope.data;
 					} else if (envelope.data) {
 						msg = typeof envelope.data === 'string' ? JSON.parse(envelope.data) : envelope.data;
 					} else {
-						// direct message
 						msg = envelope;
 					}
-					if (msg.type === 'state' || msg.type === 'update') {
-						onState(msg.data);
+
+					if (msg.type === 'state') {
+						handlers.onState(msg.data);
+						return;
+					}
+
+					if (
+						msg.type === 'item-added' ||
+						msg.type === 'item-checked' ||
+						msg.type === 'item-unchecked'
+					) {
+						handlers.onDelta(msg);
 					}
 				} catch (e) {
 					console.warn('ws message parse error', e);
@@ -70,20 +84,6 @@ export function createWebSocket(onState: StateCallback) {
 		}, 3000);
 	}
 
-	function sendUpdate(state: AppState) {
-		if (ws?.readyState === WebSocket.OPEN) {
-			const msg: WsMessage = { type: 'update', data: state };
-			ws.send(
-				JSON.stringify({
-					type: 'event',
-					event: 'message',
-					dataType: 'json',
-					data: msg
-				})
-			);
-		}
-	}
-
 	function close() {
 		if (reconnectTimer) clearTimeout(reconnectTimer);
 		ws?.close();
@@ -91,5 +91,5 @@ export function createWebSocket(onState: StateCallback) {
 
 	connect();
 
-	return { sendUpdate, close };
+	return { close };
 }

@@ -17,11 +17,11 @@ The wedding page frontend, built with SvelteKit 2 and Svelte 5, compiled to a st
 2. The API returns a `wss://` URL pointing to Azure Web PubSub
 3. The browser opens a WebSocket with the `json.webpubsub.azure.v1` subprotocol
 4. On connection, the server sends the current state (`{ type: "state", data: ... }`)
-5. When a user modifies a list, the client sends an `event` message to the server
-6. The server persists the new state and broadcasts it to all connected clients
-7. All browsers update their UI reactively via Svelte 5's `$state`
+5. When a user modifies a list, the client calls `POST /api/lists/{list}/{action}`
+6. The server persists the mutation and broadcasts an item-level delta update
+7. All browsers patch their local list reactively via Svelte 5's `$state`
 
-Messages use the `event` type (not `sendToGroup`) so they go through the server-side eventhandler, which persists state to blob storage before broadcasting. This ensures state survives page refreshes.
+Mutations go through server HTTP endpoints (`add`, `checked`, `unchecked`) so the app avoids sending full list payloads for each change while still persisting to blob storage.
 
 ## staticwebapp.config.json
 

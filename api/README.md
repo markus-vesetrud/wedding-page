@@ -8,7 +8,18 @@ The backend API for the wedding page, running on Azure Functions v4 (Node.js pro
 
 Called by the frontend to get a WebSocket URL. Returns a `wss://` URL with an embedded access token that the browser uses to connect directly to Azure Web PubSub.
 
-The token includes roles `webpubsub.joinLeaveGroup.all` and `webpubsub.sendToGroup.all`. The `sendToGroup` role is granted but not actively used — all updates go through the server via `event` messages instead, so the server can persist state before broadcasting. The role could be removed if you want to enforce server-only messaging.
+### `POST /api/lists/{list}/{action}`
+
+Server-side list mutations. `list` must be one of `gifts`, `guests`, `cakes` and `action` must be one of:
+
+- `add` body: `{ "name": "..." }`
+- `checked` body:
+      - gifts: `{ "id": "...", "gifterName": "..." }`
+      - cakes: `{ "id": "...", "bakerName": "..." }`
+      - guests: `{ "id": "...", "allergies": "..." }`
+- `unchecked` body: `{ "id": "..." }`
+
+Each mutation updates blob state and broadcasts an item-level delta event (`item-added`, `item-checked`, `item-unchecked`) over Web PubSub.
 
 ### `POST /api/eventhandler`
 
@@ -16,9 +27,9 @@ The upstream event handler for Azure Web PubSub. Web PubSub calls this endpoint 
 
 | Event | `ce-type` header | What happens |
 |---|---|---|
-| **Connect** | `azure.webpubsub.sys.connect` | Adds the client to the `all` group, confirms subprotocol |
+| **Connect** | `azure.webpubsub.sys.connect` | Accepts the WebSocket connection, confirms subprotocol |
 | **Connected** | `azure.webpubsub.sys.connected` | Reads `state.json` from blob storage, sends it to the new client |
-| **Message** | `azure.webpubsub.user.message` | Writes the new state to blob storage, broadcasts to all clients |
+| **Message** | `azure.webpubsub.user.message` | Not used for app updates (handled by list HTTP endpoints) |
 | **Disconnected** | `azure.webpubsub.sys.disconnected` | Logs the disconnection |
 
 Also handles `OPTIONS`/`GET` requests for Web PubSub's abuse protection validation (returns `webhook-allowed-origin` header).
@@ -27,20 +38,17 @@ Also handles `OPTIONS`/`GET` requests for Web PubSub's abuse protection validati
 
 ```
 Browser sends:
-  { type: "event", event: "message", dataType: "json", data: { type: "update", data: <AppState> } }
+  POST /api/lists/{list}/{action}
         │
         ▼
-  Web PubSub (cloud)
-        │  HTTP POST with ce-type: azure.webpubsub.user.message
-        ▼
-  /api/eventhandler
-        │  1. writeState(state) → blob storage
-        │  2. pubsubClient.sendToAll({ type: "state", data: state })
+  /api/lists/{list}/{action}
+        │  1. read/modify/write state.json in blob storage
+        │  2. pubsubClient.sendToAll({ type: "item-*", list, item })
         ▼
   Web PubSub broadcasts to all WebSocket clients
         │
         ▼
-  All browsers receive: { type: "message", data: { type: "state", data: <AppState> } }
+  All browsers receive delta updates and patch local state
 ```
 
 ## Environment Variables

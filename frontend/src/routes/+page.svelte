@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { createWebSocket } from '$lib/websocket';
-	import type { AppState, Cake, Gift, Guest } from '$lib/types';
+	import type { AppState, Cake, Gift, Guest, Item, ListName, WsDeltaMessage } from '$lib/types';
 
 	type ListKind = 'gift' | 'guest' | 'cake';
 
@@ -28,24 +28,64 @@
 
 	let ws: ReturnType<typeof createWebSocket> | null = null;
 
-	function makeId(): string {
-		return Math.random().toString(36).slice(2, 10);
+	function listName(kind: ListKind): ListName {
+		if (kind === 'gift') return 'gifts';
+		if (kind === 'guest') return 'guests';
+		if (kind === 'cake') return 'cakes';
+		throw new Error('Unknown list kind: ' + kind);
 	}
 
-	function now(): Date {
-		return new Date();
+	function upsertItem<T extends Item>(list: T[], item: T): T[] {
+		const index = list.findIndex((i) => i.id === item.id);
+		if (index === -1) {
+			return [...list, item];
+		}
+		const newList = [...list];
+		newList[index] = item;
+		return newList;
 	}
 
-	function currentState(): AppState {
-		return {
-			gifts: $state.snapshot(gifts),
-			guests: $state.snapshot(guests),
-			cakes: $state.snapshot(cakes)
-		};
+	function applyDelta(update: WsDeltaMessage) {
+		if (update.list === 'gifts') {
+			gifts = upsertItem(gifts, update.item as Gift);
+			return;
+		}
+
+		if (update.list === 'guests') {
+			guests = upsertItem(guests, update.item as Guest);
+			return;
+		}
+
+		if (update.list === 'cakes') {
+			cakes = upsertItem(cakes, update.item as Cake);
+			return;
+		}
+		console.warn('Unknown list in update', update);
 	}
 
-	function broadcastState() {
-		ws?.sendUpdate(currentState());
+	async function callListEndpoint(
+		list: ListName,
+		action: 'add' | 'checked' | 'unchecked',
+		payload: Record<string, unknown>
+	): Promise<WsDeltaMessage | null> {
+		try {
+			const res = await fetch(`/api/lists/${list}/${action}`, {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(payload)
+			});
+
+			if (!res.ok) {
+				console.error('list endpoint failed', list, action, res.status);
+				return null;
+			}
+
+			const json = (await res.json()) as { update?: WsDeltaMessage };
+			return json.update ?? null;
+		} catch (error) {
+			console.error('list endpoint error', error);
+			return null;
+		}
 	}
 
 	function openCheckModal(kind: ListKind, itemId: string, itemName: string, initialValue = '') {
@@ -86,74 +126,39 @@
 		return 'List allergies';
 	}
 
-	function applyCheckModal() {
+	async function applyCheckModal() {
 		const value = checkModalMeta.trim();
 		if (!value) {
 			checkModalError = `${checkModalLabel(checkModalKind)} is required.`;
 			return;
 		}
 
-		if (checkModalKind === 'gift') {
-			const item = gifts.find((gift) => gift.id === checkModalItemId);
-			if (!item) return;
-			item.checked = true;
-			item.gifterName = value;
-			item.updatedAt = now();
-		}
-
-		if (checkModalKind === 'cake') {
-			const item = cakes.find((cake) => cake.id === checkModalItemId);
-			if (!item) return;
-			item.checked = true;
-			item.bakerName = value;
-			item.updatedAt = now();
-		}
-
-		if (checkModalKind === 'guest') {
-			const item = guests.find((guest) => guest.id === checkModalItemId);
-			if (!item) return;
-			item.checked = true;
-			item.allergies = value;
-			item.updatedAt = now();
-		}
+		const list = listName(checkModalKind);
+		const field = checkModalKind === 'gift' ? 'gifterName' : checkModalKind === 'cake' ? 'bakerName' : 'allergies';
+		const update = await callListEndpoint(list, 'checked', {
+			id: checkModalItemId,
+			[field]: value
+		});
+		if (update) applyDelta(update);
 
 		closeCheckModal();
-		broadcastState();
 	}
 
-	function confirmUncheck() {
-		if (uncheckModalKind === 'gift') {
-			const item = gifts.find((gift) => gift.id === uncheckModalItemId);
-			if (!item) return;
-			item.checked = false;
-			item.updatedAt = now();
-		}
-
-		if (uncheckModalKind === 'cake') {
-			const item = cakes.find((cake) => cake.id === uncheckModalItemId);
-			if (!item) return;
-			item.checked = false;
-			item.updatedAt = now();
-		}
-
-		if (uncheckModalKind === 'guest') {
-			const item = guests.find((guest) => guest.id === uncheckModalItemId);
-			if (!item) return;
-			item.checked = false;
-			item.updatedAt = now();
-		}
+	async function confirmUncheck() {
+		const list = listName(uncheckModalKind);
+		const update = await callListEndpoint(list, 'unchecked', { id: uncheckModalItemId });
+		if (update) applyDelta(update);
 
 		closeUncheckModal();
-		broadcastState();
 	}
 
 	// -- Gift actions --
-	function addGift() {
+	async function addGift() {
 		const name = newGift.trim();
 		if (!name) return;
-		gifts.push({ id: makeId(), name, checked: false, updatedAt: now() });
+		const update = await callListEndpoint('gifts', 'add', { name });
+		if (update) applyDelta(update);
 		newGift = '';
-		broadcastState();
 	}
 
 	function toggleGift(id: string) {
@@ -166,18 +171,13 @@
 		openCheckModal('gift', item.id, item.name, item.gifterName || '');
 	}
 
-	function removeGift(id: string) {
-		gifts = gifts.filter((g) => g.id !== id);
-		broadcastState();
-	}
-
 	// -- Guest actions --
-	function addGuest() {
+	async function addGuest() {
 		const name = newGuest.trim();
 		if (!name) return;
-		guests.push({ id: makeId(), name, checked: false, updatedAt: now() });
+		const update = await callListEndpoint('guests', 'add', { name });
+		if (update) applyDelta(update);
 		newGuest = '';
-		broadcastState();
 	}
 
 	function toggleGuest(id: string) {
@@ -190,18 +190,13 @@
 		openCheckModal('guest', item.id, item.name, item.allergies || '');
 	}
 
-	function removeGuest(id: string) {
-		guests = guests.filter((g) => g.id !== id);
-		broadcastState();
-	}
-
 	// -- Cake actions --
-	function addCake() {
+	async function addCake() {
 		const name = newCake.trim();
 		if (!name) return;
-		cakes.push({ id: makeId(), name, checked: false, updatedAt: now(), servings: 0 });
+		const update = await callListEndpoint('cakes', 'add', { name });
+		if (update) applyDelta(update);
 		newCake = '';
-		broadcastState();
 	}
 
 	function toggleCake(id: string) {
@@ -214,17 +209,17 @@
 		openCheckModal('cake', item.id, item.name, item.bakerName || '');
 	}
 
-	function removeCake(id: string) {
-		cakes = cakes.filter((c) => c.id !== id);
-		broadcastState();
-	}
-
 	onMount(() => {
-		ws = createWebSocket((state: AppState) => {
-			gifts = state.gifts ?? [];
-			guests = state.guests ?? [];
-			cakes = state.cakes ?? [];
-			connected = true;
+		ws = createWebSocket({
+			onState: (state: AppState) => {
+				gifts = state.gifts ?? [];
+				guests = state.guests ?? [];
+				cakes = state.cakes ?? [];
+				connected = true;
+			},
+			onDelta: (update) => {
+				applyDelta(update);
+			}
 		});
 	});
 
@@ -254,7 +249,6 @@
 					<input type="checkbox" checked={gift.checked} onchange={() => toggleGift(gift.id)} />
 					<span>{gift.name}</span>
 				</label>
-				<button class="remove" onclick={() => removeGift(gift.id)}>✕</button>
 			</li>
 		{/each}
 	</ul>
@@ -277,7 +271,6 @@
 					<input type="checkbox" checked={cake.checked} onchange={() => toggleCake(cake.id)} />
 					<span>{cake.name}</span>
 				</label>
-				<button class="remove" onclick={() => removeCake(cake.id)}>✕</button>
 			</li>
 		{/each}
 	</ul>
@@ -300,7 +293,6 @@
 					<input type="checkbox" checked={guest.checked} onchange={() => toggleGuest(guest.id)} />
 					<span>{guest.name}</span>
 				</label>
-				<button class="remove" onclick={() => removeGuest(guest.id)}>✕</button>
 			</li>
 		{/each}
 	</ul>
@@ -424,17 +416,6 @@
 		gap: 0.5rem;
 		cursor: pointer;
 		flex: 1;
-	}
-
-	.remove {
-		background: none;
-		color: #ccc;
-		padding: 0.25rem 0.5rem;
-		font-size: 0.8rem;
-	}
-	.remove:hover {
-		color: #c44;
-		background: none;
 	}
 
 	.modal-backdrop {
