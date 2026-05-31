@@ -6,7 +6,3 @@
 **/output
 **/dist
 **/.env
-api
-infra
-swa-cli.config.json
-.cloudflared.env

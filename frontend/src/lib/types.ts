@@ -8,5 +8,5 @@ export type {
   ListEntity,
   WsDeltaMessage,
   WsMessage
-} from '@shared/types';
+} from '../../../shared/types';
 

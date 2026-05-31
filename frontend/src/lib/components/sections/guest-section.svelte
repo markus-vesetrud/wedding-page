@@ -9,7 +9,8 @@
 		newGuest,
 		onNewGuestChange,
 		onAddGuest,
-		onToggleGuest
+		onToggleGuest,
+		readOnly = false
 	}: {
 		guests: Guest[];
 		isLoading: boolean;
@@ -17,6 +18,7 @@
 		onNewGuestChange: (value: string) => void;
 		onAddGuest: () => void;
 		onToggleGuest: (id: string) => void;
+			readOnly?: boolean;
 	} = $props();
 </script>
 
@@ -24,7 +26,11 @@
 	<div class="space-y-4">
 		<h2 class="text-2xl font-semibold tracking-tight">Gjesteliste</h2>
 		<p class="text-muted-foreground text-sm leading-relaxed">
-			Finn navnet ditt og huk av for om du kommer. Allergier registreres kun når du markerer ditt eget navn, og vises ikke for andre.
+			{#if readOnly}
+				Oversikt over gjestene som er invitert.
+			{:else}
+				Finn navnet ditt og huk av for om du kommer. Allergier registreres kun når du markerer ditt eget navn, og vises ikke for andre.
+			{/if}
 		</p>
 		<ul class="space-y-2">
 			{#if isLoading && guests.length === 0}
@@ -39,12 +45,18 @@
 				{#each guests as guest (guest.id)}
 					<li class="bg-muted/60 flex items-center justify-between rounded-lg border p-3">
 						<label class="flex items-center gap-3">
-							<input
-								type="checkbox"
-								checked={guest.checked}
-								onchange={() => onToggleGuest(guest.id)}
-								class="text-primary focus:ring-ring h-4 w-4 rounded border"
-							/>
+							{#if readOnly}
+								<span class={`inline-flex h-4 min-w-4 items-center justify-center rounded border px-1 text-[10px] ${guest.checked ? 'border-primary text-primary' : 'text-muted-foreground border-muted-foreground/40'}`}>
+									{guest.checked ? '✓' : '–'}
+								</span>
+							{:else}
+								<input
+									type="checkbox"
+									checked={guest.checked}
+									onchange={() => onToggleGuest(guest.id)}
+									class="text-primary focus:ring-ring h-4 w-4 rounded border"
+								/>
+							{/if}
 							<span class={guest.checked ? 'text-muted-foreground line-through' : ''}>{guest.name}</span>
 						</label>
 						<span class="text-muted-foreground text-xs">{guest.checked ? 'Kommer' : 'Ikke bekreftet'}</span>
@@ -52,5 +64,22 @@
 				{/each}
 			{/if}
 		</ul>
+		{#if !readOnly}
+			<form
+				class="flex flex-col gap-3 sm:flex-row"
+				onsubmit={(e) => {
+					e.preventDefault();
+					onAddGuest();
+				}}
+			>
+				<Input
+					type="text"
+					value={newGuest}
+					oninput={(e: Event) => onNewGuestChange((e.currentTarget as HTMLInputElement).value)}
+					placeholder="Legg til gjest"
+				/>
+				<Button type="submit" class="min-w-28 whitespace-nowrap">Legg til</Button>
+			</form>
+		{/if}
 	</div>
 </section>
