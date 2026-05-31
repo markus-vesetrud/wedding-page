@@ -16,6 +16,10 @@ export interface RouteDependencies {
   publicDir: string;
   readState: () => Promise<import('./types.js').AppState>;
   writeState: (state: import('./types.js').AppState) => Promise<void>;
+  appendStateChangeLog: (
+    update: DeltaUpdate,
+    state: import('./types.js').AppState
+  ) => Promise<void>;
   broadcastJson: (message: DeltaUpdate) => void;
 }
 
@@ -91,6 +95,9 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
         }
 
         await deps.writeState(state);
+        if (result) {
+          await deps.appendStateChangeLog(result, state);
+        }
         return result;
       });
 

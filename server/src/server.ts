@@ -28,6 +28,7 @@ registerRoutes(app, {
   publicDir,
   readState: stateStore.readState,
   writeState: stateStore.writeState,
+  appendStateChangeLog: stateStore.appendStateChangeLog,
   broadcastJson
 });
 

@@ -24,6 +24,8 @@ const listFileNames: Record<ListName, string> = {
   cakes: 'cakes.json'
 };
 
+const changeLogFileName = 'state-changes.log';
+
 const validLists = new Set<ListName>(['gifts', 'guests', 'cakes']);
 
 function makeId(): string {
@@ -206,6 +208,7 @@ export function createStateStore(storageDir: string) {
     guests: path.join(storageDir, listFileNames.guests),
     cakes: path.join(storageDir, listFileNames.cakes)
   };
+  const changeLogFile = path.join(storageDir, changeLogFileName);
 
   async function exists(filePath: string): Promise<boolean> {
     try {
@@ -249,6 +252,10 @@ export function createStateStore(storageDir: string) {
     if (!(await exists(listFiles.cakes))) {
       await writeListFile(listFiles.cakes, defaultState.cakes);
     }
+
+    if (!(await exists(changeLogFile))) {
+      await fs.writeFile(changeLogFile, '', 'utf8');
+    }
   }
 
   async function readState(): Promise<AppState> {
@@ -283,10 +290,27 @@ export function createStateStore(storageDir: string) {
     await writeListFile(listFiles.cakes, state.cakes);
   }
 
+  async function appendStateChangeLog(update: DeltaUpdate, state: AppState): Promise<void> {
+    await ensureStateFileExists();
+
+    const entry = {
+      timestamp: nowIso(),
+      update,
+      totals: {
+        gifts: state.gifts.length,
+        guests: state.guests.length,
+        cakes: state.cakes.length
+      }
+    };
+
+    await fs.appendFile(changeLogFile, `${JSON.stringify(entry)}\n`, 'utf8');
+  }
+
   return {
     ensureStateFileExists,
     readState,
-    writeState
+    writeState,
+    appendStateChangeLog
   };
 }
 

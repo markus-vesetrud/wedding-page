@@ -25,6 +25,8 @@ Docker container (Node.js)
   ├─ WebSocket endpoint (/ws)
   └─ JSON state persistence (/data/gifts.json, /data/guests.json, /data/cakes.json)
 
+Append-only change logging is written to `/data/state-changes.log` with ISO timestamps.
+
 Optional:
 Cloudflared container -> Cloudflare Tunnel -> Public URL
 ```
