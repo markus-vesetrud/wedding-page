@@ -1,0 +1,12 @@
+.git
+.github
+**/node_modules
+**/.svelte-kit
+**/build
+**/output
+**/dist
+**/.env
+api
+infra
+swa-cli.config.json
+.cloudflared.env

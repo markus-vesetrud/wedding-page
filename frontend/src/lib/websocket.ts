@@ -9,7 +9,7 @@ interface WebSocketHandlers {
 }
 
 /**
- * Connects to Azure Web PubSub via the /api/negotiate endpoint.
+ * Connects to the app WebSocket via the /api/negotiate endpoint.
  * Calls `onState` whenever the server sends a full state snapshot.
  * Returns helpers to send updates and close the socket.
  */
@@ -33,23 +33,12 @@ export function createWebSocket(handlers: WebSocketHandlers) {
 
 			ws.onmessage = (event) => {
 				try {
-					const envelope = JSON.parse(event.data);
-
-					let msg: WsMessage;
-					if (envelope.type === 'message' && envelope.data) {
-						msg = typeof envelope.data === 'string' ? JSON.parse(envelope.data) : envelope.data;
-					} else if (envelope.data) {
-						msg = typeof envelope.data === 'string' ? JSON.parse(envelope.data) : envelope.data;
-					} else {
-						msg = envelope;
-					}
+					const msg = JSON.parse(event.data) as WsMessage;
 
 					if (msg.type === 'state') {
 						handlers.onState(msg.data);
-						return;
 					}
-
-					if (
+					else if (
 						msg.type === 'item-added' ||
 						msg.type === 'item-checked' ||
 						msg.type === 'item-unchecked'
@@ -57,7 +46,7 @@ export function createWebSocket(handlers: WebSocketHandlers) {
 						handlers.onDelta(msg);
 					}
 				} catch (e) {
-					console.warn('ws message parse error', e);
+					console.warn('WebSocket message parse error', e);
 				}
 			};
 

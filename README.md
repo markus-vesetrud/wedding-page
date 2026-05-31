@@ -1,176 +1,139 @@
-# Wedding Page
+# Wedding Page (Self-Hosted)
 
-A real-time collaborative wedding planning app with a gift registry, guest list, and cake list. Changes sync instantly across all connected browsers via WebSockets.
+Real-time collaborative wedding planning app with:
+- Gift list
+- Guest list
+- Cake list
+- Live sync across browsers
 
-Built with **SvelteKit** (frontend), **Azure Functions** (API), **Azure Web PubSub** (real-time), and **Azure Blob Storage** (persistence).
+This version runs without Azure services. It is designed for:
+1. Running on your own machine with Docker
+2. Optionally exposing it to the internet through Cloudflared
 
 ## Architecture
 
-```
-┌──────────┐   HTTPS    ┌───────────────────┐   linked    ┌──────────────────┐
-│  Browser │ ──────────▶│  Static Web App   │ ──backend──▶│  Function App    │
-│          │            │  (SvelteKit SPA)  │             │  (Node.js API)   │
-└────┬─────┘            └───────────────────┘             └──┬───────┬───────┘
-     │                                                       │       │
-     │ WebSocket (wss://)   ┌───────────────────┐            │       │
-     └─────────────────────▶│  Azure Web PubSub │◀───────────┘       │
-                            │  (hub: "wedding") │  upstream events   │
-                            └───────────────────┘  + broadcast       │
-                                                                     │
-                                                    ┌────────────────┘
-                                                    ▼
-                                            ┌───────────────┐
-                                            │ Blob Storage  │
-                                            │ (state.json)  │
-                                            └───────────────┘
+```text
+Browser
+  │
+  ▼
+HTTP + WebSocket
+  │
+  ▼
+Docker container (Node.js)
+  ├─ Serves built Svelte frontend
+  ├─ REST API (/api/*)
+  ├─ WebSocket endpoint (/ws)
+  └─ JSON state persistence (/data/state.json)
+
+Optional:
+Cloudflared container -> Cloudflare Tunnel -> Public URL
 ```
 
-### How the pieces communicate
+## Project layout
 
-1. **Browser → SWA → Function App**: The browser loads the SvelteKit SPA from the Static Web App. API requests to `/api/*` are proxied by the SWA to the linked Function App. This happens because of the `linkedBackends` resource in Bicep — it tells the SWA to forward `/api/*` traffic to the Function App and adds authentication so only the SWA can call the Function App directly.
+- `frontend/` — SvelteKit UI
+- `server/` — local backend (Express + ws + JSON file persistence)
+- `docker-compose.yml` — app + optional cloudflared service
+- `Dockerfile` — multi-stage build (frontend build + backend runtime)
 
-2. **Browser → Web PubSub (WebSocket)**: On page load, the frontend calls `POST /api/negotiate`, which returns a `wss://` URL with an access token. The browser opens a WebSocket to Web PubSub using the `json.webpubsub.azure.v1` subprotocol, which allows structured JSON messaging.
+> Existing `api/` and `infra/` folders are legacy Azure deployment artifacts and are no longer required for local self-hosting.
 
-3. **Web PubSub → Function App (upstream events)**: When clients connect or disconnect, Web PubSub forwards these as HTTP POST requests to the upstream URL configured in the hub settings. The upstream URL points to `https://<swa-hostname>/api/eventhandler` — it must go through the SWA (not directly to the Function App) because the linked backend setup blocks direct access with a 401.
+## Quick start (local only)
 
-4. **Browser → Function App (list actions)**: List changes call `POST /api/lists/{list}/{action}` (`add`, `checked`, `unchecked`) so only item-level mutations are sent.
-
-5. **Function App → Blob Storage + Web PubSub**: The list action endpoints persist `state.json` and broadcast item-level updates (`item-added`, `item-checked`, `item-unchecked`) with `sendToAll()`.
-
-### Why each config exists
-
-| File | Purpose | Required? |
-|---|---|---|
-| `api/host.json` | Azure Functions runtime config, extension bundle version | Yes — Functions won't start without it |
-| `api/local.settings.json` | Local env vars (`FUNCTIONS_WORKER_RUNTIME`, connection strings) | Yes for local dev, gitignored |
-| `api/.funcignore` | Excludes source files from deployment zip | Optional — deploy script handles exclusions |
-| `frontend/static/staticwebapp.config.json` | SPA fallback routing, API route permissions | Yes — without `navigationFallback`, deep links return 404 |
-| `swa-cli.config.json` | Local dev config — tells `swa start` where the frontend dev server and API are | Yes for local dev, not used in production |
-
-### Environment variables (Function App)
-
-| Variable | What it connects | Set by |
-|---|---|---|
-| `FUNCTIONS_WORKER_RUNTIME` | Tells the runtime to use Node.js | Bicep (app settings) |
-| `FUNCTIONS_EXTENSION_VERSION` | Functions runtime version (~4) | Bicep |
-| `WEBPUBSUB_CONNECTION_STRING` | Authenticates with Web PubSub to generate tokens and broadcast | Bicep (from `webPubSub.listKeys()`) |
-| `STORAGE_CONNECTION_STRING` | Reads/writes state.json in blob storage | Bicep (from `storageAccount.listKeys()`) |
-| `AzureWebJobsStorage` | Internal Functions runtime storage (triggers, locks) | Bicep (separate storage account) |
-| `APPLICATIONINSIGHTS_CONNECTION_STRING` | Sends logs/telemetry to Application Insights | Bicep |
-
-## Project Structure
-
-```
-wedding-page/
-├── frontend/           # SvelteKit SPA (adapter-static)
-│   ├── src/
-│   │   ├── lib/
-│   │   │   ├── types.ts        # Shared types (AppState, specialized items, WsMessage)
-│   │   │   └── websocket.ts    # WebSocket client (negotiate, connect, receive state + deltas)
-│   │   └── routes/
-│   │       └── +page.svelte    # Main page (gift registry + guest list + cake list)
-│   └── static/
-│       └── staticwebapp.config.json  # SWA routing config
-├── api/                # Azure Functions (Node.js v4 programming model)
-│   ├── src/
-│   │   ├── index.ts             # Entry point (registers functions)
-│   │   └── functions/
-│   │       ├── negotiate.ts      # POST /api/negotiate — returns wss:// URL
-│   │       ├── eventhandler.ts   # POST /api/eventhandler — Web PubSub upstream handler
-│   │       └── listactions.ts    # POST /api/lists/{list}/{action} — item-level mutations
-│   ├── host.json                # Functions runtime config
-│   └── local.settings.json      # Local environment variables (gitignored)
-├── infra/              # Azure infrastructure
-│   ├── main.bicep      # All Azure resources
-│   └── deploy.sh       # Build + deploy script
-└── .github/
-    └── workflows/
-        └── deploy.yml  # CI/CD pipeline
-```
-
-## Prerequisites
-
-- [Node.js 22](https://nodejs.org/)
-- [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli)
-- [Azure Functions Core Tools v4](https://learn.microsoft.com/azure/azure-functions/functions-run-local) (`npm i -g azure-functions-core-tools@4`)
-- [SWA CLI](https://github.com/Azure/static-web-apps-cli) (`npm i -g @azure/static-web-apps-cli`)
-
-## Local Development
-
-You need **three terminals** running simultaneously:
+Run only the app container:
 
 ```bash
-# Terminal 1 — API (Function App, logs visible here)
-cd api && npm ci && func start
-
-# Terminal 2 — Web PubSub tunnel (routes cloud events to local API)
-awps-tunnel run \
-  --hub wedding \
-  --endpoint "https://<your-pubsub>.webpubsub.azure.com" \
-  --upstream http://localhost:7071 \
-  -s <subscription-id> \
-  -g rg-wedding-page
-
-# Terminal 3 — Frontend + SWA proxy
-swa start
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 ```
 
-Then open http://localhost:4280.
+Open:
 
-The `swa start` command:
-- Starts the Vite dev server on `:5173` (hot reload)
-- Proxies `/api/*` to `:7071` (your local Function App)
-- Serves on `:4280` with SWA behavior (routing rules, etc.)
+```text
+http://localhost:3000
+```
 
-The `awps-tunnel` is needed because Web PubSub runs in Azure and needs to reach your local eventhandler for `connect`/`connected`/`disconnected` events.
+State is persisted in a named volume: `wedding-data`.
 
-## Deployment
+## Optional: publish with Cloudflared
 
-### Manual (from your machine)
+### 1) Create a Cloudflare tunnel token
+
+In Cloudflare Zero Trust dashboard:
+1. Create a tunnel
+2. Add a public hostname (for example `wedding.yourdomain.com`)
+3. Set service URL to `http://app:3000`
+4. Copy the tunnel token
+
+### 2) Export token locally
 
 ```bash
-# Full deploy (infra + app)
-./infra/deploy.sh
-
-# App only (skip Bicep)
-./infra/deploy.sh -s
+export CLOUDFLARED_TOKEN='your-token-here'
 ```
 
-### CI/CD (GitHub Actions)
+### 3) Start app + tunnel
 
-Push to `main` triggers the workflow in `.github/workflows/deploy.yml`. It requires three repository secrets:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile tunnel up --build -d
+```
 
-| Secret | Value |
-|---|---|
-| `AZURE_CLIENT_ID` | App registration client ID |
-| `AZURE_TENANT_ID` | Azure AD tenant ID |
-| `AZURE_SUBSCRIPTION_ID` | Subscription ID |
+Then browse to your configured hostname.
 
-These use [Workload Identity Federation](https://learn.microsoft.com/azure/active-directory/workload-identities/workload-identity-federation) (OIDC) — no passwords to rotate.
+## Common commands
 
-## Azure Resources
+```bash
+# Start app only
+docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
 
-All resources are defined in `infra/main.bicep`:
+# Start app + cloudflared
+docker compose -f docker-compose.yml -f docker-compose.local.yml --profile tunnel up --build -d
 
-| Resource | SKU | Purpose |
-|---|---|---|
-| Static Web App | Standard | Hosts SPA, proxies `/api/*` to Function App |
-| Function App | B1 (Basic) | API endpoints (negotiate, eventhandler) |
-| App Service Plan | B1 | Hosting plan for Function App (always-on, no cold starts) |
-| Web PubSub | Free F1 | Real-time WebSocket messaging |
-| Storage Account (app) | Standard LRS | Persists `state.json` in blob storage |
-| Storage Account (func) | Standard LRS | Internal Functions runtime storage |
-| Application Insights | Per-GB | Logging and telemetry |
-| Log Analytics Workspace | Per-GB | Backing store for App Insights |
+# View logs
+docker compose logs -f app
+docker compose logs -f cloudflared
 
-### Why Standard SWA (not Free)?
+# Stop all services
+docker compose down
 
-The Free SWA tier does not support linked backends (bring-your-own Function App). Standard is required for the `linkedBackends` feature.
+# Stop and remove persisted app data
+docker compose down -v
+```
 
-### Why two storage accounts?
+## Notes for learning from scratch
 
-Azure Functions requires its own storage account for internal bookkeeping (trigger state, locks, etc.). The app data storage account holds the `state.json` blob. Separating them avoids conflicts and makes it clear what each is for.
+- API endpoints are in `server/src/server.js`
+- Realtime uses plain WebSocket (`ws`) with broadcast on each list update
+- Persistence is simple JSON file storage (`STATE_FILE`, default `/data/state.json`)
+- Frontend still uses the same `/api/negotiate` and `/api/lists/*` contract, now served locally
 
-### Why B1 instead of Consumption (Y1)?
+## CI/CD to home server (Docker + SSH)
 
-Consumption plan has 5-15 second cold starts for Node.js, which makes the WebSocket connection flow painfully slow. B1 is always-on (~€12/mo) with no cold starts.
+This repository includes `.github/workflows/deploy.yml` that does:
+1. Build Docker image on GitHub Actions
+2. Push image to GHCR (`ghcr.io/markus-vesetrud/wedding-page:latest`)
+3. SSH to your home server and run `docker compose pull app && docker compose up -d app`
+
+### Required GitHub repository secrets
+
+- `HOME_SERVER_HOST` — server hostname or IP
+- `HOME_SERVER_USER` — SSH user
+- `HOME_SERVER_SSH_KEY` — private key for SSH (PEM/OpenSSH format)
+- `HOME_SERVER_PORT` — SSH port (optional, defaults to 22)
+- `HOME_SERVER_APP_DIR` — absolute path on server containing `docker-compose.yml`
+- `GHCR_USERNAME` — GitHub username that can read GHCR package
+- `GHCR_PAT` — Personal Access Token with `read:packages`
+- `CLOUDFLARED_TOKEN` — optional, only if you want tunnel auto-start in deployment
+
+### Files used for deployment mode
+
+- `docker-compose.yml` uses image pull from GHCR (server-friendly)
+- `docker-compose.local.yml` adds local `build:` override (dev-friendly)
+
+On the home server, keep `docker-compose.yml` in `HOME_SERVER_APP_DIR` and run once manually:
+
+```bash
+docker login ghcr.io -u <GHCR_USERNAME>
+docker compose pull app
+docker compose up -d app
+```
+
+After that, each push to `main` will redeploy automatically.

@@ -4,5 +4,7 @@ infra/static-sites-docs.txt
 infra/storage-account-docs.txt
 svelte.docs.txt
 
+.cloudflared.env
+
 dist/
 .env

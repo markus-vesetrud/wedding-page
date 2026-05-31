@@ -1,5 +1,0 @@
-*.ts
-tsconfig.json
-local.settings.json
-.git*
-.vscode
