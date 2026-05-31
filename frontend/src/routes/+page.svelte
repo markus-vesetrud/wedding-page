@@ -3,6 +3,8 @@
 	import { createWebSocket } from '$lib/websocket';
 	import type { AppState, Cake, Gift, Guest, Item, ListName, WsDeltaMessage } from '$lib/types';
 	import WelcomeSection from '$lib/components/sections/welcome-section.svelte';
+	import PracticalSection from '$lib/components/sections/practical-section.svelte';
+	import ProgramSection from '$lib/components/sections/program-section.svelte';
 	import GuestSection from '$lib/components/sections/guest-section.svelte';
 	import GiftSection from '$lib/components/sections/gift-section.svelte';
 	import CakeSection from '$lib/components/sections/cake-section.svelte';
@@ -12,24 +14,25 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 
 	type ListKind = 'gift' | 'guest' | 'cake';
-	type SectionId = 'program' | 'gjester' | 'gaver' | 'kaker';
+	type SectionId = 'velkommen' | 'praktisk' | 'program' | 'gjester' | 'gaver' | 'kaker';
 
-	const TAB_WRAP_THRESHOLD_PX = 420;
 	const TAB_STICKY_TOP_PX = 8;
 	const TAB_SCROLL_MARGIN_GAP_PX = 8;
 
 	const sectionTabs: Array<{ id: SectionId; label: string }> = [
+		{ id: 'velkommen', label: 'Velkommen' },
+		{ id: 'praktisk', label: 'Praktisk' },
 		{ id: 'program', label: 'Program' },
-		{ id: 'gjester', label: 'Gjesteliste' },
 		{ id: 'gaver', label: 'Gaver' },
-		{ id: 'kaker', label: 'Kaker' }
+		{ id: 'kaker', label: 'Kaker' },
+		{ id: 'gjester', label: 'Gjesteliste' }
 	];
 
 	let gifts = $state<Gift[]>([]);
 	let guests = $state<Guest[]>([]);
 	let cakes = $state<Cake[]>([]);
 	let connected = $state(false);
-	let activeSection = $state<SectionId>('program');
+	let activeSection = $state<SectionId>('velkommen');
 	let showConnectionStatus = $state(true);
 	let newGift = $state('');
 	let newGuest = $state('');
@@ -51,27 +54,13 @@
 	let ws: ReturnType<typeof createWebSocket> | null = null;
 	let hideConnectionStatusTimer: ReturnType<typeof setTimeout> | null = null;
 	let tabsNavElement: HTMLElement | null = null;
-	let isTabsWrapped = $state(false);
+	let tabResizeObserver: ResizeObserver | null = null;
 	let tabBarHeightPx = $state(72);
 	let scrollRafId: number | null = null;
 
-	function calculateTabHeight(
-		viewportWidth: number,
-		showsConnectionStatus: boolean,
-		measuredHeight: number | null
-	): number {
-		const wraps = viewportWidth < TAB_WRAP_THRESHOLD_PX;
-		const estimatedBaseHeight = wraps ? 104 : 56;
-		const estimatedStatusHeight = showsConnectionStatus ? 24 : 0;
-		const estimatedHeight = estimatedBaseHeight + estimatedStatusHeight;
-		if (measuredHeight === null) return estimatedHeight;
-		return Math.max(measuredHeight, estimatedHeight);
-	}
-
 	function syncTabMetrics() {
-		isTabsWrapped = window.innerWidth < TAB_WRAP_THRESHOLD_PX;
-		const measuredHeight = tabsNavElement ? Math.ceil(tabsNavElement.getBoundingClientRect().height) : null;
-		tabBarHeightPx = calculateTabHeight(window.innerWidth, !connected || showConnectionStatus, measuredHeight);
+		const measuredHeight = tabsNavElement ? Math.ceil(tabsNavElement.getBoundingClientRect().height) : 0;
+		if (measuredHeight > 0) tabBarHeightPx = measuredHeight;
 	}
 
 	function stickyOffset() {
@@ -79,7 +68,7 @@
 	}
 
 	function updateActiveSectionFromViewport() {
-		const focusLine = window.scrollY + window.innerHeight * 0.45;
+		const focusLine = window.scrollY + window.innerHeight * 0.3;
 		let chosen: SectionId = sectionTabs[0].id;
 
 		for (const tab of sectionTabs) {
@@ -102,6 +91,7 @@
 	function sectionTop(id: SectionId) {
 		const section = document.getElementById(id);
 		if (!section) return null;
+		if (id === 'velkommen') return section.getBoundingClientRect().top + window.scrollY;
 		return section.getBoundingClientRect().top + window.scrollY - stickyOffset();
 	}
 
@@ -292,7 +282,6 @@
 
 	onMount(() => {
 		const onResize = () => {
-			syncTabMetrics();
 			queueActiveSectionUpdate();
 		};
 
@@ -320,18 +309,27 @@
 			}
 		});
 
+		if (tabsNavElement) {
+			tabResizeObserver = new ResizeObserver(() => {
+				syncTabMetrics();
+			});
+			tabResizeObserver.observe(tabsNavElement);
+		}
+
 		syncTabMetrics();
 		window.addEventListener('resize', onResize);
 		window.addEventListener('scroll', onScroll, { passive: true });
-		// queueActiveSectionUpdate();
+		queueActiveSectionUpdate();
 
 		return () => {
 			window.removeEventListener('resize', onResize);
 			window.removeEventListener('scroll', onScroll);
-			// if (scrollRafId !== null) {
-			// 	cancelAnimationFrame(scrollRafId);
-			// 	scrollRafId = null;
-			// }
+			tabResizeObserver?.disconnect();
+			tabResizeObserver = null;
+			if (scrollRafId !== null) {
+				cancelAnimationFrame(scrollRafId);
+				scrollRafId = null;
+			}
 		};
 	});
 
@@ -342,40 +340,35 @@
 </script>
 
 <div
-	class="mx-auto w-full max-w-3xl px-4 py-8 md:px-6 lg:py-12"
-	style={`--tabs-height: ${tabBarHeightPx}px; --tabs-sticky-top: ${TAB_STICKY_TOP_PX}px; --tabs-scroll-gap: ${TAB_SCROLL_MARGIN_GAP_PX}px; --tabs-wrap-threshold: ${TAB_WRAP_THRESHOLD_PX}px;`}
+	class="mx-auto w-full max-w-2xl px-4 py-8 md:px-6 lg:py-12"
+	style={`--tabs-height: ${tabBarHeightPx}px; --tabs-sticky-top: ${TAB_STICKY_TOP_PX}px; --tabs-scroll-gap: ${TAB_SCROLL_MARGIN_GAP_PX}px;`}
 >
-	<nav bind:this={tabsNavElement} class="sticky top-2 z-30 mb-4 rounded-xl border bg-background/90 p-2 backdrop-blur">
-		<ul class={`grid gap-2 ${isTabsWrapped ? 'grid-cols-2' : 'grid-cols-4'}`}>
-			{#each sectionTabs as tab}
-				<li>
-					<button
-						type="button"
-						onclick={() => scrollToSection(tab.id)}
-						class={`min-w-[4.0rem] w-full rounded-md px-2 py-2 text-sm font-medium transition-colors ${activeSection === tab.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
-					>
-						{tab.label}
-					</button>
-				</li>
-			{/each}
-		</ul>
-		{#if !connected || showConnectionStatus}
-			<p class="text-muted-foreground mt-2 text-center text-xs">
-				{connected ? 'Tilkoblet' : 'Kobler til ...'}
-			</p>
-		{/if}
-	</nav>
-
 	<main>
 		<WelcomeSection />
-		<GuestSection
-			{guests}
-			isLoading={!connected}
-			newGuest={newGuest}
-			onNewGuestChange={(value) => (newGuest = value)}
-			onAddGuest={addGuest}
-			onToggleGuest={toggleGuest}
-		/>
+
+		<nav bind:this={tabsNavElement} class="sticky top-2 z-30 mb-4 rounded-xl border bg-background/90 p-2 backdrop-blur">
+			<ul class="grid grid-cols-2 gap-2 min-[440px]:grid-cols-3 min-[850px]:grid-cols-6">
+				{#each sectionTabs as tab}
+					<li>
+						<button
+							type="button"
+							onclick={() => scrollToSection(tab.id)}
+							class={`w-full rounded-md px-2 py-2 text-sm font-medium transition-colors ${activeSection === tab.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
+						>
+							{tab.label}
+						</button>
+					</li>
+				{/each}
+			</ul>
+			{#if !connected || showConnectionStatus}
+				<p class="text-muted-foreground mt-2 text-center text-xs">
+					{connected ? 'Tilkoblet' : 'Kobler til ...'}
+				</p>
+			{/if}
+		</nav>
+
+		<PracticalSection />
+		<ProgramSection />
 		<GiftSection
 			{gifts}
 			isLoading={!connected}
@@ -391,6 +384,10 @@
 			onNewCakeChange={(value) => (newCake = value)}
 			onAddCake={addCake}
 			onToggleCake={toggleCake}
+		/>
+    <GuestSection
+			{guests}
+			isLoading={!connected}
 		/>
 	</main>
 </div>
@@ -435,20 +432,25 @@
 <style>
 	:global(html) {
 		scroll-behavior: smooth;
-		scroll-snap-type: y mandatory;
-	}
-
-	:global(header[data-snap]) {
-		scroll-snap-align: start;
-        scroll-snap-stop: always;
+		scroll-snap-type: y proximity;
 	}
 
 	:global(section[id]) {
 		scroll-snap-align: start;
-        scroll-snap-stop: always;
+	}
+
+	:global(section[id='velkommen']) {
+		scroll-margin-top: 0;
+	}
+
+	:global(section[id]:not([id='velkommen'])) {
 		scroll-margin-top: calc(var(--tabs-height, 72px) + var(--tabs-sticky-top, 8px) + var(--tabs-scroll-gap, 8px));
+	}
+
+	:global(main > section[id]:last-of-type) {
 		min-height: calc(100svh - var(--tabs-height, 72px));
 	}
+  
 </style>
 
 {#if uncheckModalOpen}

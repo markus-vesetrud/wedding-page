@@ -2,6 +2,8 @@
 	import type { Cake } from '$lib/types';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+    import SectionShell from '$lib/components/sections/section-shell.svelte';
+	import ListItem from '$lib/components/sections/list-item.svelte';
 
 	let {
 		cakes,
@@ -23,27 +25,25 @@
 	const wanted = $derived(cakes.filter((cake) => !cake.checked));
 </script>
 
-<section id="kaker" class="pb-[50svh] pt-0">
-	<div class="space-y-4">
-		<h2 class="text-2xl font-semibold tracking-tight">Kakeoversikt</h2>
-		<p class="text-muted-foreground text-sm leading-relaxed">
-			Se hvem som baker hva, hvilke kaker vi fortsatt ønsker oss, og legg gjerne til flere kakeforslag.
-		</p>
+<SectionShell
+    id="kaker"
+    title="Kakeoversikt"
+    ingress="Se hvem som baker hva, hvilke kaker vi fortsatt ønsker oss, og legg gjerne til flere kakeforslag."
+>
+    <div class="space-y-4">
         <div class="grid gap-4 md:grid-cols-2">
             <div class="space-y-2">
                 <h3 class="text-sm font-semibold">Tatt av bakere</h3>
                 <ul class="space-y-2">
                     {#if isLoading && cakes.length === 0}
                         {#each Array(2) as _, index (index)}
-                            <li class="bg-muted/60 rounded-lg border p-3 animate-pulse">
-                                <div class="h-4 w-2/3 rounded bg-muted"></div>
-                            </li>
+                            <ListItem isLoading />
                         {/each}
                     {:else if claimed.length === 0}
                         <li class="text-muted-foreground rounded-lg border border-dashed p-3 text-sm">Ingen kaker er tatt ennå.</li>
                     {:else}
                         {#each claimed as cake (cake.id)}
-                            <li class="bg-muted/60 flex items-center justify-between rounded-lg border p-3">
+                            <ListItem itemClass="flex items-center justify-between">
                                 <label class="flex items-center gap-3">
                                     <input
                                         type="checkbox"
@@ -54,7 +54,7 @@
                                     <span class="text-muted-foreground line-through">{cake.name}</span>
                                 </label>
                                 <span class="text-muted-foreground text-xs">{cake.bakerName ?? 'Baker'}</span>
-                            </li>
+                            </ListItem>
                         {/each}
                     {/if}
                 </ul>
@@ -64,15 +64,13 @@
                 <ul class="space-y-2">
                     {#if isLoading && cakes.length === 0}
                         {#each Array(2) as _, index (index)}
-                            <li class="bg-muted/60 rounded-lg border p-3 animate-pulse">
-                                <div class="h-4 w-2/3 rounded bg-muted"></div>
-                            </li>
+                            <ListItem isLoading />
                         {/each}
                     {:else if wanted.length === 0}
                         <li class="text-muted-foreground rounded-lg border border-dashed p-3 text-sm">Ingen åpne kakeønsker akkurat nå.</li>
                     {:else}
                         {#each wanted as cake (cake.id)}
-                            <li class="bg-muted/60 flex items-center justify-between rounded-lg border p-3">
+                            <ListItem itemClass="flex items-center justify-between">
                                 <label class="flex items-center gap-3">
                                     <input
                                         type="checkbox"
@@ -83,7 +81,7 @@
                                     <span>{cake.name}</span>
                                 </label>
                                 <span class="text-muted-foreground text-xs">Mangler baker</span>
-                            </li>
+                            </ListItem>
                         {/each}
                     {/if}
                 </ul>
@@ -105,4 +103,4 @@
             <Button type="submit" class="min-w-28 whitespace-nowrap">Legg til</Button>
         </form>
 	</div>
-</section>
+</SectionShell>

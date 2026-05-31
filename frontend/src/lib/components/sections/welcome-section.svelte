@@ -1,35 +1,15 @@
-<section id="program" class="pb-[50svh] pt-0">
-	<div class="space-y-4">
-		<h2 class="text-3xl font-semibold tracking-tight md:text-4xl">Program</h2>
-		<p class="text-muted-foreground max-w-3xl leading-relaxed">Tentativt program for dagen.</p>
-	</div>
-
-	<div class="mt-6 bg-muted rounded-xl p-4 md:p-6">
-		<ul class="space-y-3 text-sm md:text-base">
-			<li class="flex items-center justify-between gap-4 border-b pb-2">
-				<span class="font-medium">Vielse</span>
-				<span class="text-muted-foreground">14:00</span>
-			</li>
-			<li class="flex items-center justify-between gap-4 border-b pb-2">
-				<span class="font-medium">Bildetaking</span>
-				<span class="text-muted-foreground">14:45</span>
-			</li>
-			<li class="flex items-center justify-between gap-4 border-b pb-2">
-				<span class="font-medium">Mingling</span>
-				<span class="text-muted-foreground">15:15</span>
-			</li>
-			<li class="flex items-center justify-between gap-4 border-b pb-2">
-				<span class="font-medium">Middag</span>
-				<span class="text-muted-foreground">16:00</span>
-			</li>
-			<li class="flex items-center justify-between gap-4 border-b pb-2">
-				<span class="font-medium">Dans</span>
-				<span class="text-muted-foreground">20:00</span>
-			</li>
-			<li class="flex items-center justify-between gap-4">
-				<span class="font-medium">Kaker</span>
-				<span class="text-muted-foreground">22:00</span>
-			</li>
-		</ul>
+<section id="velkommen" class="pt-5 pb-30">
+	<div
+		class="relative mt-4 overflow-hidden rounded-xl bg-cover bg-center bg-no-repeat"
+		style="background-image: url('https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1600&q=80');"
+	>
+		<div class="absolute inset-0 bg-black/35"></div>
+		<div class="relative z-10 flex min-h-[60svh] flex-col justify-end gap-4 p-6 md:p-8">
+			<h1 class="inline-flex w-fit flex-col border-2 border-white px-4 py-3 text-white">
+				<span class="text-2xl font-semibold tracking-tight md:text-3xl">Velkommen til</span>
+				<span class="text-3xl font-semibold tracking-tight md:text-5xl">Malin og Markus</span>
+				<span class="text-2xl font-semibold tracking-tight md:text-3xl">sitt bryllup</span>
+			</h1>
+		</div>
 	</div>
 </section>
