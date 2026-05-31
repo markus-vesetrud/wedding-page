@@ -108,9 +108,25 @@
 		throw new Error('Unknown list kind: ' + kind);
 	}
 
+	function isSameEntity<T extends Item>(current: T, incoming: T): boolean {
+		const currentRecord = current as Record<string, unknown>;
+		const incomingRecord = incoming as Record<string, unknown>;
+
+		const currentKeys = Object.keys(currentRecord);
+		const incomingKeys = Object.keys(incomingRecord);
+		if (currentKeys.length !== incomingKeys.length) return false;
+
+		for (const key of incomingKeys) {
+			if (currentRecord[key] !== incomingRecord[key]) return false;
+		}
+
+		return true;
+	}
+
 	function upsertItem<T extends Item>(list: T[], item: T): T[] {
 		const index = list.findIndex((i) => i.id === item.id);
 		if (index === -1) return [...list, item];
+		if (isSameEntity(list[index], item)) return list;
 		const newList = [...list];
 		newList[index] = item;
 		return newList;
