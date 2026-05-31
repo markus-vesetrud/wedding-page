@@ -23,7 +23,7 @@ Docker container (Node.js)
   ├─ Serves built Svelte frontend
   ├─ REST API (/api/*)
   ├─ WebSocket endpoint (/ws)
-  └─ JSON state persistence (/data/state.json)
+  └─ JSON state persistence (/data/gifts.json, /data/guests.json, /data/cakes.json)
 
 Optional:
 Cloudflared container -> Cloudflare Tunnel -> Public URL
@@ -101,7 +101,7 @@ docker compose down -v
 
 - API endpoints are in `server/src/server.js`
 - Realtime uses plain WebSocket (`ws`) with broadcast on each list update
-- Persistence is simple JSON file storage (`STATE_FILE`, default `/data/state.json`)
+- Persistence is simple JSON file storage (`STATE_FILE` defines storage directory base; files are `gifts.json`, `guests.json`, `cakes.json`)
 - Frontend still uses the same `/api/negotiate` and `/api/lists/*` contract, now served locally
 
 ## CI/CD to home server (Docker + SSH)

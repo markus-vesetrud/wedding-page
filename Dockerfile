@@ -29,8 +29,9 @@ WORKDIR /app
 
 # Overridden by compose for specific environments
 ENV NODE_ENV=production
+ENV HOST_PORT=3000
 ENV PORT=3000
-ENV STATE_FILE=/data/state.json
+ENV STATE_DIR=/data
 
 COPY --from=server-deps /app/server/node_modules ./server/node_modules
 COPY --from=server-build /app/server/dist ./

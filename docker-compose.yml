@@ -5,10 +5,11 @@ services:
       dockerfile: Dockerfile
     container_name: wedding-page
     ports:
-      - "3000:3000"
+      - "2718:3000"
     environment:
+      - HOST_PORT=2718
       - PORT=3000
-      - STATE_FILE=/data/state.json
+      - STATE_DIR=/data
     volumes:
       - ./data:/data
     restart: unless-stopped

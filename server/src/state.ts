@@ -18,6 +18,12 @@ const defaultState: AppState = {
   cakes: []
 };
 
+const listFileNames: Record<ListName, string> = {
+  gifts: 'gifts.json',
+  guests: 'guests.json',
+  cakes: 'cakes.json'
+};
+
 const validLists = new Set<ListName>(['gifts', 'guests', 'cakes']);
 
 function makeId(): string {
@@ -194,35 +200,87 @@ export function parseUncheckedBody(body: unknown): { id: string } {
   return { id: parseRequiredString(body, 'id', 'body') };
 }
 
-export function createStateStore(stateFile: string) {
-  async function ensureStateFileExists(): Promise<void> {
-    const dir = path.dirname(stateFile);
-    await fs.mkdir(dir, { recursive: true });
+export function createStateStore(storageDir: string) {
+  const listFiles: Record<ListName, string> = {
+    gifts: path.join(storageDir, listFileNames.gifts),
+    guests: path.join(storageDir, listFileNames.guests),
+    cakes: path.join(storageDir, listFileNames.cakes)
+  };
+
+  async function exists(filePath: string): Promise<boolean> {
     try {
-      await fs.access(stateFile);
+      await fs.access(filePath);
+      return true;
     } catch {
-      await fs.writeFile(stateFile, JSON.stringify(defaultState, null, 2), 'utf8');
+      return false;
+    }
+  }
+
+  async function writeListFile<T>(filePath: string, list: T[]): Promise<void> {
+    await fs.writeFile(filePath, JSON.stringify(list, null, 2), 'utf8');
+  }
+
+  async function readJsonFile(filePath: string, label: string): Promise<unknown> {
+    const content = await fs.readFile(filePath, 'utf8');
+    try {
+      return JSON.parse(content);
+    } catch {
+      throw new Error(`${label} contains invalid JSON`);
+    }
+  }
+
+  async function ensureStateFileExists(): Promise<void> {
+    await fs.mkdir(storageDir, { recursive: true });
+
+    const giftsExists = await exists(listFiles.gifts);
+    const guestsExists = await exists(listFiles.guests);
+    const cakesExists = await exists(listFiles.cakes);
+
+    if (giftsExists && guestsExists && cakesExists) {
+      return;
+    }
+
+    if (!(await exists(listFiles.gifts))) {
+      await writeListFile(listFiles.gifts, defaultState.gifts);
+    }
+    if (!(await exists(listFiles.guests))) {
+      await writeListFile(listFiles.guests, defaultState.guests);
+    }
+    if (!(await exists(listFiles.cakes))) {
+      await writeListFile(listFiles.cakes, defaultState.cakes);
     }
   }
 
   async function readState(): Promise<AppState> {
     await ensureStateFileExists();
 
-    const content = await fs.readFile(stateFile, 'utf8');
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      throw new Error('State file contains invalid JSON');
+    const giftsRaw = await readJsonFile(listFiles.gifts, 'gifts.json');
+    const guestsRaw = await readJsonFile(listFiles.guests, 'guests.json');
+    const cakesRaw = await readJsonFile(listFiles.cakes, 'cakes.json');
+
+    if (!Array.isArray(giftsRaw)) {
+      throw new HttpError('gifts.json must contain an array', 400);
+    }
+    if (!Array.isArray(guestsRaw)) {
+      throw new HttpError('guests.json must contain an array', 400);
+    }
+    if (!Array.isArray(cakesRaw)) {
+      throw new HttpError('cakes.json must contain an array', 400);
     }
 
-    return parseState(parsed);
+    return {
+      gifts: giftsRaw.map((entry, index) => parseGift(entry, `gifts[${index}]`)),
+      guests: guestsRaw.map((entry, index) => parseGuest(entry, `guests[${index}]`)),
+      cakes: cakesRaw.map((entry, index) => parseCake(entry, `cakes[${index}]`))
+    };
   }
 
   async function writeState(state: AppState): Promise<void> {
     parseState(state);
     await ensureStateFileExists();
-    await fs.writeFile(stateFile, JSON.stringify(state, null, 2), 'utf8');
+    await writeListFile(listFiles.gifts, state.gifts);
+    await writeListFile(listFiles.guests, state.guests);
+    await writeListFile(listFiles.cakes, state.cakes);
   }
 
   return {
