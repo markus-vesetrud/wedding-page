@@ -1,10 +1,7 @@
-plan.md
-infra/pubsub-docs.txt
-infra/static-sites-docs.txt
-infra/storage-account-docs.txt
-svelte.docs.txt
-
-.cloudflared.env
-
 dist/
+node_modules/
+
 .env
+plan.md
+
+data/
