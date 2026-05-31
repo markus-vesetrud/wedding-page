@@ -1,6 +1,8 @@
 services:
   app:
-    image: ghcr.io/markus-vesetrud/wedding-page:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: wedding-page
     ports:
       - "3000:3000"
@@ -10,13 +12,3 @@ services:
     volumes:
       - ./data:/data
     restart: unless-stopped
-
-  cloudflared:
-    image: cloudflare/cloudflared:latest
-    container_name: wedding-page-cloudflared
-    command: tunnel --no-autoupdate run --token ${CLOUDFLARED_TOKEN:-}
-    depends_on:
-      - app
-    restart: unless-stopped
-    profiles:
-      - tunnel

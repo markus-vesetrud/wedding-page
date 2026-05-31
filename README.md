@@ -33,17 +33,16 @@ Cloudflared container -> Cloudflare Tunnel -> Public URL
 
 - `frontend/` — SvelteKit UI
 - `server/` — local backend (Express + ws + JSON file persistence)
-- `docker-compose.yml` — app + optional cloudflared service
+- `docker-compose.yml` — local app (builds from Dockerfile)
+- `docker-compose.tunnel.yml` — override for GHCR image + cloudflared
 - `Dockerfile` — multi-stage build (frontend build + backend runtime)
-
-> Existing `api/` and `infra/` folders are legacy Azure deployment artifacts and are no longer required for local self-hosting.
 
 ## Quick start (local only)
 
 Run only the app container:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+docker compose up --build
 ```
 
 Open:
@@ -73,7 +72,7 @@ export CLOUDFLARED_TOKEN='your-token-here'
 ### 3) Start app + tunnel
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.local.yml --profile tunnel up --build -d
+docker compose -f docker-compose.yml -f docker-compose.tunnel.yml up -d
 ```
 
 Then browse to your configured hostname.
@@ -82,10 +81,10 @@ Then browse to your configured hostname.
 
 ```bash
 # Start app only
-docker compose -f docker-compose.yml -f docker-compose.local.yml up --build
+docker compose up --build
 
 # Start app + cloudflared
-docker compose -f docker-compose.yml -f docker-compose.local.yml --profile tunnel up --build -d
+docker compose -f docker-compose.yml -f docker-compose.tunnel.yml up -d
 
 # View logs
 docker compose logs -f app
@@ -125,15 +124,14 @@ This repository includes `.github/workflows/deploy.yml` that does:
 
 ### Files used for deployment mode
 
-- `docker-compose.yml` uses image pull from GHCR (server-friendly)
-- `docker-compose.local.yml` adds local `build:` override (dev-friendly)
+- `docker-compose.yml` uses local `Dockerfile` build (dev-friendly)
+- `docker-compose.tunnel.yml` overrides app to GHCR image and adds cloudflared
 
 On the home server, keep `docker-compose.yml` in `HOME_SERVER_APP_DIR` and run once manually:
 
 ```bash
 docker login ghcr.io -u <GHCR_USERNAME>
-docker compose pull app
-docker compose up -d app
+docker compose -f docker-compose.yml -f docker-compose.tunnel.yml up -d
 ```
 
 After that, each push to `main` will redeploy automatically.
