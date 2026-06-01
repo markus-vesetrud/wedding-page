@@ -1,6 +1,6 @@
 <script lang="ts">
     import type { Cake } from '$shared/types';
-    import { sortByCheckedAndUpdatedAt } from '$lib/item-sorting';
+    import { sortByClaimedAndUpdatedAt } from '$lib/item-sorting';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
     import SectionShell from '$lib/components/sections/section-shell.svelte';
@@ -22,7 +22,7 @@
 		onToggleCake: (id: string) => void;
 	} = $props();
 
-	const sortedCakes = $derived(sortByCheckedAndUpdatedAt(cakes));
+    const sortedCakes = $derived(sortByClaimedAndUpdatedAt(cakes));
 </script>
 
 <SectionShell
@@ -37,13 +37,13 @@
                     <label class="flex items-center gap-3">
                         <input
                             type="checkbox"
-                            checked={cake.checked}
+                            checked={cake.claimed}
                             onchange={() => onToggleCake(cake.id)}
                             class="text-primary focus:ring-ring h-4 w-4 rounded border"
                         />
-                        <span class={cake.checked ? 'text-muted-foreground line-through' : ''}>{cake.name}</span>
+                        <span class={cake.claimed ? 'text-muted-foreground line-through' : ''}>{cake.name}</span>
                     </label>
-                    <span class="text-muted-foreground text-xs">{cake.checked ? (cake.bakerName ?? 'Baker') : 'Mangler baker'}</span>
+                    <span class="text-muted-foreground text-xs">{cake.claimed ? (cake.bakerName ?? 'Baker') : 'Mangler baker'}</span>
                 </div>
             {/snippet}
         </AnimatedList>

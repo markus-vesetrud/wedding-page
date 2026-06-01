@@ -39,9 +39,8 @@ export function createWebSocket(handlers: WebSocketHandlers) {
 						handlers.onState(msg.data);
 					}
 					else if (
-						msg.type === 'item-added' ||
-						msg.type === 'item-checked' ||
-						msg.type === 'item-unchecked'
+						msg.type === 'add' ||
+						msg.type === 'update'
 					) {
 						handlers.onDelta(msg);
 					}

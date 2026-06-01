@@ -3,17 +3,13 @@ import path from 'node:path';
 import { HttpError } from './errors.js';
 import {
   addItem,
-  checkItem,
+  finalizeItemUpdate,
   isListName,
   markInvitationVisited,
   parseAddBody,
-  parseCheckedBody,
-  parseGuestNotesBody,
-  parseUncheckedBody,
-  uncheckItem,
-  updateGuestNotes
+  parseItemUpdateBody
 } from './state.js';
-import type { AppState, Guest, WsDeltaUpdate } from '../../shared/types.js';
+import type { AppState, Guest, ListName, WsDeltaType, WsDeltaUpdate } from '../../shared/types.js';
 
 export interface RouteDependencies {
   publicDir: string;
@@ -85,7 +81,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
     }
   });
 
-  app.post('/api/lists/:list/:action', async (req: Request<{ list: string; action: string }>, res: Response) => {
+  app.post('/api/:action/:list', async (req: Request<{ list: ListName; action: WsDeltaType }>, res: Response) => {
     const listParam = req.params.list;
     const action = req.params.action;
 
@@ -96,7 +92,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
 
     const list = listParam;
 
-    if (!['add', 'checked', 'unchecked', 'notes'].includes(action)) {
+    if (!['add', 'update'].includes(action)) {
       res.status(400).json({ error: 'Invalid action' });
       return;
     }
@@ -111,31 +107,9 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
           result = addItem(state, list, name);
         }
 
-        if (action === 'checked') {
-          const { id, value } = parseCheckedBody(list, req.body);
-
-          result = checkItem(state, list, id, value);
-          if (!result) {
-            throw new HttpError('Item not found', 404);
-          }
-        }
-
-        if (action === 'unchecked') {
-          const { id } = parseUncheckedBody(req.body);
-
-          result = uncheckItem(state, list, id);
-          if (!result) {
-            throw new HttpError('Item not found', 404);
-          }
-        }
-
-        if (action === 'notes') {
-          if (list !== 'guests') {
-            throw new HttpError('Notes action is only supported for guests', 400);
-          }
-
-          const { id, value } = parseGuestNotesBody(req.body);
-          result = updateGuestNotes(state, id, value);
+        if (action === 'update') {
+          const { id, patch } = parseItemUpdateBody(list, req.body);
+          result = finalizeItemUpdate(state, list, id, patch);
           if (!result) {
             throw new HttpError('Item not found', 404);
           }

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { createWebSocket } from '$lib/websocket';
-	import type { AppState, Cake, Gift, Guest, Item, ListName, WsDeltaUpdate } from '$shared/types';
+	import { Attendance, type AppState, type Cake, type WsDeltaType, type Gift, type Guest, type Item, type ListName, type WsDeltaUpdate } from '$shared/types';
 	import WelcomeSection from '$lib/components/sections/welcome-section.svelte';
 	import PracticalSection from '$lib/components/sections/practical-section.svelte';
 	import ProgramSection from '$lib/components/sections/program-section.svelte';
@@ -150,11 +150,11 @@
 
 	async function callListEndpoint(
 		list: ListName,
-		action: 'add' | 'checked' | 'unchecked',
+		action: WsDeltaType,
 		payload: Record<string, unknown>
 	): Promise<WsDeltaUpdate | null> {
 		try {
-			const res = await fetch(`/api/lists/${list}/${action}`, {
+			const res = await fetch(`/api/${action}/${list}`, {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
 				body: JSON.stringify(payload)
@@ -227,9 +227,19 @@
 
 		const list = listName(checkModalKind);
 		const field = checkModalKind === 'gift' ? 'gifterName' : checkModalKind === 'cake' ? 'bakerName' : 'allergies';
-		const update = await callListEndpoint(list, 'checked', {
-			id: checkModalItemId,
+		const patch: Record<string, unknown> = {
 			[field]: value
+		};
+		if (checkModalKind === 'gift' || checkModalKind === 'cake') {
+			patch.claimed = true;
+		}
+		if (checkModalKind === 'guest') {
+			patch.attendance = Attendance.Attending;
+		}
+
+		const update = await callListEndpoint(list, 'update', {
+			id: checkModalItemId,
+			patch
 		});
 		if (update) applyDelta(update);
 		closeCheckModal();
@@ -237,7 +247,14 @@
 
 	async function confirmUncheck() {
 		const list = listName(uncheckModalKind);
-		const update = await callListEndpoint(list, 'unchecked', { id: uncheckModalItemId });
+		const patch =
+			uncheckModalKind === 'guest'
+				? { attendance: Attendance.NotAttending }
+				: { claimed: false };
+		const update = await callListEndpoint(list, 'update', {
+			id: uncheckModalItemId,
+			patch
+		});
 		if (update) applyDelta(update);
 		closeUncheckModal();
 	}
@@ -253,29 +270,11 @@
 	function toggleGift(id: string) {
 		const item = gifts.find((g) => g.id === id);
 		if (!item) return;
-		if (item.checked) {
+		if (item.claimed) {
 			openUncheckModal('gift', item.id, item.name, item.gifterName || 'Ukjent gavegiver');
 			return;
 		}
 		openCheckModal('gift', item.id, item.name, item.gifterName || '');
-	}
-
-	async function addGuest() {
-		const name = newGuest.trim();
-		if (!name) return;
-		const update = await callListEndpoint('guests', 'add', { name });
-		if (update) applyDelta(update);
-		newGuest = '';
-	}
-
-	function toggleGuest(id: string) {
-		const item = guests.find((g) => g.id === id);
-		if (!item) return;
-		if (item.checked) {
-			openUncheckModal('guest', item.id, item.name, 'Privat');
-			return;
-		}
-		openCheckModal('guest', item.id, item.name, item.allergies || '');
 	}
 
 	async function addCake() {
@@ -289,7 +288,7 @@
 	function toggleCake(id: string) {
 		const item = cakes.find((c) => c.id === id);
 		if (!item) return;
-		if (item.checked) {
+		if (item.claimed) {
 			openUncheckModal('cake', item.id, item.name, item.bakerName || 'Ukjent baker');
 			return;
 		}

@@ -1,8 +1,9 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 import { HttpError } from './errors.js';
-import type {
+import {
   AppState,
+  Attendance,
   Item,
   Cake,
   WsDeltaUpdate,
@@ -96,19 +97,24 @@ function parseBaseItem(raw: unknown, context: string): Item {
   return {
     id: parseRequiredString(raw, 'id', context),
     name: parseRequiredString(raw, 'name', context),
-    checked: parseRequiredBoolean(raw, 'checked', context),
     updatedAt: parseRequiredString(raw, 'updatedAt', context)
   };
+}
+
+function isAttendance(value: unknown): value is Attendance {
+  return value === 'Kommer' || value === 'Kommer ikke' || value === 'Usikker';
 }
 
 function parseGift(raw: unknown, context: string): Gift {
   if (!isRecord(raw)) {
     throw new HttpError(`${context} must be an object`, 400);
   }
-  assertAllowedKeys(raw, ['id', 'name', 'checked', 'updatedAt', 'gifterName'], context);
+  assertAllowedKeys(raw, ['id', 'name', 'claimed', 'updatedAt', 'gifterName'], context);
   const base = parseBaseItem(raw, context);
+  const claimed = parseRequiredBoolean(raw, 'claimed', context);
   return {
     ...base,
+    claimed,
     gifterName: parseOptionalString(raw, 'gifterName', context)
   };
 }
@@ -149,10 +155,15 @@ function parseGuest(raw: unknown, context: string): Guest {
   if (!isRecord(raw)) {
     throw new HttpError(`${context} must be an object`, 400);
   }
-  assertAllowedKeys(raw, ['id', 'name', 'checked', 'updatedAt', 'allergies', 'invitationId'], context);
+  assertAllowedKeys(raw, ['id', 'name', 'attendance', 'updatedAt', 'allergies', 'invitationId'], context);
   const base = parseBaseItem(raw, context);
+  const attendanceRaw = raw.attendance;
+  if (!isAttendance(attendanceRaw)) {
+    throw new HttpError(`${context}.attendance must be one of Kommer, Kommer ikke, Usikker`, 400);
+  }
   return {
     ...base,
+    attendance: attendanceRaw,
     allergies: parseOptionalString(raw, 'allergies', context),
     invitationId: parseOptionalString(raw, 'invitationId', context)
   };
@@ -162,14 +173,16 @@ function parseCake(raw: unknown, context: string): Cake {
   if (!isRecord(raw)) {
     throw new HttpError(`${context} must be an object`, 400);
   }
-  assertAllowedKeys(raw, ['id', 'name', 'checked', 'updatedAt', 'servings', 'bakerName'], context);
+  assertAllowedKeys(raw, ['id', 'name', 'claimed', 'updatedAt', 'servings', 'bakerName'], context);
   const base = parseBaseItem(raw, context);
+  const claimed = parseRequiredBoolean(raw, 'claimed', context);
   const servings = raw.servings;
   if (typeof servings !== 'number' || !Number.isFinite(servings)) {
     throw new HttpError(`${context}.servings must be a number`, 400);
   }
   return {
     ...base,
+    claimed,
     servings,
     bakerName: parseOptionalString(raw, 'bakerName', context)
   };
@@ -216,58 +229,70 @@ export function parseAddBody(body: unknown): { name: string } {
   return { name: parseRequiredString(body, 'name', 'body').trim() };
 }
 
-export function parseCheckedBody(
+export function parseItemUpdateBody(
   list: ListName,
   body: unknown
-): { id: string; value: string; field: 'gifterName' | 'bakerName' | 'allergies' } {
+): { id: string; patch: Record<string, unknown> } {
   if (!isRecord(body)) {
     throw new HttpError('Request body must be an object', 400);
   }
-  const field = requiredCheckField(list);
-  assertAllowedKeys(body, ['id', field], 'body');
 
   const id = parseRequiredString(body, 'id', 'body');
-  const rawValue = body[field];
-  if (typeof rawValue !== 'string' || !rawValue.trim()) {
-    throw new HttpError(`body.${field} must be a non-empty string`, 400);
+
+  const patch = body.patch;
+  if (!isRecord(patch)) {
+    throw new HttpError('body.patch must be an object', 400);
   }
 
-  return { id, value: rawValue.trim(), field };
-}
-
-export function parseUncheckedBody(body: unknown): { id: string } {
-  if (!isRecord(body)) {
-    throw new HttpError('Request body must be an object', 400);
-  }
-  assertAllowedKeys(body, ['id'], 'body');
-  return { id: parseRequiredString(body, 'id', 'body') };
-}
-
-export function parseGuestNotesBody(
-  body: unknown
-): { id: string; value: string; completed: boolean } {
-  if (!isRecord(body)) {
-    throw new HttpError('Request body must be an object', 400);
+  const keys = Object.keys(patch);
+  if (keys.length === 0) {
+    throw new HttpError('body.patch must contain at least one field', 400);
   }
 
-  assertAllowedKeys(body, ['id', 'allergies', 'completed'], 'body');
-
-  const id = parseRequiredString(body, 'id', 'body');
-  const rawValue = body.allergies;
-  if (typeof rawValue !== 'string') {
-    throw new HttpError('body.allergies must be a string', 400);
+  if (list === 'gifts') {
+    assertAllowedKeys(patch, ['name', 'claimed', 'gifterName'], 'body.patch');
+    if (patch.name !== undefined && (typeof patch.name !== 'string' || !patch.name.trim())) {
+      throw new HttpError('body.patch.name must be a non-empty string', 400);
+    }
+    if (patch.claimed !== undefined && typeof patch.claimed !== 'boolean') {
+      throw new HttpError('body.patch.claimed must be a boolean', 400);
+    }
+    if (patch.gifterName !== undefined && typeof patch.gifterName !== 'string') {
+      throw new HttpError('body.patch.gifterName must be a string', 400);
+    }
+  } else if (list === 'cakes') {
+    assertAllowedKeys(patch, ['name', 'claimed', 'bakerName', 'servings'], 'body.patch');
+    if (patch.name !== undefined && (typeof patch.name !== 'string' || !patch.name.trim())) {
+      throw new HttpError('body.patch.name must be a non-empty string', 400);
+    }
+    if (patch.claimed !== undefined && typeof patch.claimed !== 'boolean') {
+      throw new HttpError('body.patch.claimed must be a boolean', 400);
+    }
+    if (patch.bakerName !== undefined && typeof patch.bakerName !== 'string') {
+      throw new HttpError('body.patch.bakerName must be a string', 400);
+    }
+    if (patch.servings !== undefined && (typeof patch.servings !== 'number' || !Number.isFinite(patch.servings))) {
+      throw new HttpError('body.patch.servings must be a number', 400);
+    }
+  } else if (list === 'guests') {
+    assertAllowedKeys(patch, ['name', 'attendance', 'allergies', 'invitationId'], 'body.patch');
+    if (patch.name !== undefined && (typeof patch.name !== 'string' || !patch.name.trim())) {
+      throw new HttpError('body.patch.name must be a non-empty string', 400);
+    }
+    if (patch.attendance !== undefined && !isAttendance(patch.attendance)) {
+      throw new HttpError('body.patch.attendance must be one of Kommer, Kommer ikke, Usikker', 400);
+    }
+    if (patch.allergies !== undefined && typeof patch.allergies !== 'string') {
+      throw new HttpError('body.patch.allergies must be a string', 400);
+    }
+    if (patch.invitationId !== undefined && typeof patch.invitationId !== 'string') {
+      throw new HttpError('body.patch.invitationId must be a string', 400);
+    }
+  } else {
+    throw new HttpError('Updates are only supported for gifts, cakes and guests', 400);
   }
 
-  const rawCompleted = body.completed;
-  if (rawCompleted !== undefined && typeof rawCompleted !== 'boolean') {
-    throw new HttpError('body.completed must be a boolean when provided', 400);
-  }
-
-  return {
-    id,
-    value: rawValue,
-    completed: rawCompleted === true
-  };
+  return { id, patch: { ...patch } };
 }
 
 export function createStateStore(storageDir: string) {
@@ -302,7 +327,7 @@ export function createStateStore(storageDir: string) {
     }
   }
 
-  async function ensureStateFileExists(): Promise<void> {
+  async function ensureStateFilesExists(): Promise<void> {
     await fs.mkdir(storageDir, { recursive: true });
 
     if (!(await exists(listFiles.gifts))) {
@@ -323,7 +348,7 @@ export function createStateStore(storageDir: string) {
   }
 
   async function readState(): Promise<AppState> {
-    await ensureStateFileExists();
+    await ensureStateFilesExists();
 
     const giftsRaw = await readJsonFile(listFiles.gifts, 'gifts.json');
     const guestsRaw = await readJsonFile(listFiles.guests, 'guests.json');
@@ -343,17 +368,25 @@ export function createStateStore(storageDir: string) {
       throw new HttpError('invitations.json must contain an array', 400);
     }
 
-    return {
-      gifts: giftsRaw.map((entry, index) => parseGift(entry, `gifts[${index}]`)),
-      guests: guestsRaw.map((entry, index) => parseGuest(entry, `guests[${index}]`)),
-      cakes: cakesRaw.map((entry, index) => parseCake(entry, `cakes[${index}]`)),
+    const migratedGifts = parseLegacyAwareListEntries(giftsRaw, 'gifts');
+    const migratedGuests = parseLegacyAwareListEntries(guestsRaw, 'guests');
+    const migratedCakes = parseLegacyAwareListEntries(cakesRaw, 'cakes');
+
+    const state: AppState = {
+      gifts: migratedGifts.map((entry, index) => parseGift(entry, `gifts[${index}]`)),
+      guests: migratedGuests.map((entry, index) => parseGuest(entry, `guests[${index}]`)),
+      cakes: migratedCakes.map((entry, index) => parseCake(entry, `cakes[${index}]`)),
       invitations: invitationsRaw.map((entry, index) => parseInvitation(entry, `invitations[${index}]`))
     };
+
+    normalizeLegacyState(state);
+    writeState(state);
+    return state;
   }
 
   async function writeState(state: AppState): Promise<void> {
     parseState(state);
-    await ensureStateFileExists();
+    await ensureStateFilesExists();
     await writeListFile(listFiles.gifts, state.gifts);
     await writeListFile(listFiles.guests, state.guests);
     await writeListFile(listFiles.cakes, state.cakes);
@@ -361,7 +394,7 @@ export function createStateStore(storageDir: string) {
   }
 
   async function appendStateChangeLog(update: WsDeltaUpdate, state: AppState): Promise<void> {
-    await ensureStateFileExists();
+    await ensureStateFilesExists();
 
     const entry = {
       timestamp: nowIso(),
@@ -378,100 +411,148 @@ export function createStateStore(storageDir: string) {
   }
 
   return {
-    ensureStateFileExists,
+    ensureStateFileExists: ensureStateFilesExists,
     readState,
     writeState,
     appendStateChangeLog
   };
 }
 
-export function requiredCheckField(list: ListName): 'gifterName' | 'bakerName' | 'allergies' {
-  if (list === 'gifts') return 'gifterName';
-  if (list === 'cakes') return 'bakerName';
-  return 'allergies';
-}
-
 export function addItem(state: AppState, list: ListName, name: string): WsDeltaUpdate {
   const base: Item = {
     id: makeId(),
     name,
-    checked: false,
     updatedAt: nowIso()
   };
 
   let item: ListEntity;
-  if (list === 'gifts') item = { ...base };
-  else if (list === 'guests') item = { ...base };
-  else item = { ...base, servings: 0 };
+  if (list === 'gifts') item = { ...base, claimed: false };
+  else if (list === 'guests') item = { ...base, attendance: Attendance.Unsure };
+  else item = { ...base, claimed: false, servings: 0 };
 
   state[list].push(item as never);
-  return { type: 'item-added', list, item };
+  return { type: 'add', list, item };
 }
 
-export function checkItem(state: AppState, list: ListName, id: string, value: string): WsDeltaUpdate | null {
-  if (list === 'gifts') {
-    const item = state.gifts.find((entry) => entry.id === id);
-    if (!item) return null;
-    item.checked = true;
-    item.updatedAt = nowIso();
-    item.gifterName = value;
-    return { type: 'item-checked', list, item };
-  }
-
-  if (list === 'guests') {
-    const item = state.guests.find((entry) => entry.id === id);
-    if (!item) return null;
-    item.checked = true;
-    item.updatedAt = nowIso();
-    item.allergies = value;
-    return { type: 'item-checked', list, item };
-  }
-
-  const item = state.cakes.find((entry) => entry.id === id);
-  if (!item) return null;
-  item.checked = true;
-  item.updatedAt = nowIso();
-  item.bakerName = value;
-  return { type: 'item-checked', list, item };
-}
-
-export function uncheckItem(state: AppState, list: ListName, id: string): WsDeltaUpdate | null {
-  if (list === 'gifts') {
-    const item = state.gifts.find((entry) => entry.id === id);
-    if (!item) return null;
-    item.checked = false;
-    item.updatedAt = nowIso();
-    delete item.gifterName;
-    return { type: 'item-unchecked', list, item };
-  }
-
-  if (list === 'guests') {
-    const item = state.guests.find((entry) => entry.id === id);
-    if (!item) return null;
-    item.checked = false;
-    item.updatedAt = nowIso();
-    return { type: 'item-unchecked', list, item };
-  }
-
-  const item = state.cakes.find((entry) => entry.id === id);
-  if (!item) return null;
-  item.checked = false;
-  item.updatedAt = nowIso();
-  delete item.bakerName;
-  return { type: 'item-unchecked', list, item };
-}
-
-export function updateGuestNotes(
+export function updateItem(
   state: AppState,
+  list: ListName,
   id: string,
-  notes: string
+  patch: Record<string, unknown>
 ): WsDeltaUpdate | null {
-  const item = state.guests.find((entry) => entry.id === id);
-  if (!item) return null;
+  if (list === 'gifts') {
+    const item = state.gifts.find((entry) => entry.id === id);
+    if (!item) return null;
+    if (typeof patch.name === 'string' && patch.name.trim()) item.name = patch.name.trim();
+    if (typeof patch.claimed === 'boolean') item.claimed = patch.claimed;
+    if (typeof patch.gifterName === 'string') {
+      const value = patch.gifterName.trim();
+      if (value) item.gifterName = value;
+      else delete item.gifterName;
+    }
+    item.updatedAt = nowIso();
+    return { type: 'update', list, item };
+  }
 
-  item.allergies = notes;
-  item.updatedAt = nowIso();
-  return { type: 'item-checked', list: 'guests', item };
+  if (list === 'guests') {
+    const item = state.guests.find((entry) => entry.id === id);
+    if (!item) return null;
+    if (typeof patch.name === 'string' && patch.name.trim()) item.name = patch.name.trim();
+    if (isAttendance(patch.attendance)) item.attendance = patch.attendance;
+    if (typeof patch.allergies === 'string') item.allergies = patch.allergies;
+    if (typeof patch.invitationId === 'string') item.invitationId = patch.invitationId;
+    item.updatedAt = nowIso();
+    return { type: 'update', list, item };
+  }
+
+  if (list === 'cakes') {
+    const item = state.cakes.find((entry) => entry.id === id);
+    if (!item) return null;
+    if (typeof patch.name === 'string' && patch.name.trim()) item.name = patch.name.trim();
+    if (typeof patch.claimed === 'boolean') item.claimed = patch.claimed;
+    if (typeof patch.bakerName === 'string') {
+      const value = patch.bakerName.trim();
+      if (value) item.bakerName = value;
+      else delete item.bakerName;
+    }
+    if (typeof patch.servings === 'number' && Number.isFinite(patch.servings)) {
+      item.servings = patch.servings;
+    }
+    item.updatedAt = nowIso();
+    return { type: 'update', list, item };
+  }
+
+  return null;
+}
+
+export function normalizeLegacyState(state: AppState): void {
+  for (const gift of state.gifts as Array<Gift & { checked?: boolean }>) {
+    if ((gift as { claimed?: boolean }).claimed === undefined) {
+      gift.claimed = Boolean(gift.checked);
+    }
+    delete gift.checked;
+  }
+
+  for (const cake of state.cakes as Array<Cake & { checked?: boolean }>) {
+    if ((cake as { claimed?: boolean }).claimed === undefined) {
+      cake.claimed = Boolean(cake.checked);
+    }
+    delete cake.checked;
+  }
+
+  for (const guest of state.guests as Array<Guest & { checked?: boolean }>) {
+    if ((guest as { attendance?: Attendance }).attendance === undefined) {
+      guest.attendance = guest.checked ? Attendance.Attending : Attendance.NotAttending;
+    }
+    delete guest.checked;
+  }
+}
+
+export function migrateLegacyRecord(raw: unknown, list: 'gifts' | 'cakes' | 'guests'): unknown {
+  if (!isRecord(raw)) return raw;
+
+  if (list === 'gifts') {
+    const output = { ...raw };
+    if (!('claimed' in output) && 'checked' in output) {
+      output.claimed = Boolean(output.checked);
+    }
+    delete output.checked;
+    return output;
+  }
+
+  if (list === 'cakes') {
+    const output = { ...raw };
+    if (!('claimed' in output) && 'checked' in output) {
+      output.claimed = Boolean(output.checked);
+    }
+    delete output.checked;
+    return output;
+  }
+
+  const output = { ...raw };
+  if (!('attendance' in output) && 'checked' in output) {
+    output.attendance = output.checked ? 'Kommer' : 'Usikker';
+  }
+  delete output.checked;
+  return output;
+}
+
+export function parseLegacyAwareListEntries(
+  entries: unknown[],
+  list: 'gifts' | 'cakes' | 'guests'
+): unknown[] {
+  return entries.map((entry) => migrateLegacyRecord(entry, list));
+}
+
+export function finalizeItemUpdate(
+  state: AppState,
+  list: ListName,
+  id: string,
+  patch: Record<string, unknown>
+): WsDeltaUpdate | null {
+  const update = updateItem(state, list, id, patch);
+  if (!update) return null;
+  return update;
 }
 
 export function isListName(value: string): value is ListName {

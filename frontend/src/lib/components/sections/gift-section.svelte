@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Gift } from '$shared/types';
-	import { sortByCheckedAndUpdatedAt } from '$lib/item-sorting';
+	import { sortByClaimedAndUpdatedAt } from '$lib/item-sorting';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import SectionShell from '$lib/components/sections/section-shell.svelte';
@@ -22,7 +22,7 @@
 		onToggleGift: (id: string) => void;
 	} = $props();
 
-	const sortedGifts = $derived(sortByCheckedAndUpdatedAt(gifts));
+	const sortedGifts = $derived(sortByClaimedAndUpdatedAt(gifts));
 </script>
 
 <SectionShell
@@ -37,13 +37,13 @@
 					<label class="flex items-center gap-3">
 						<input
 							type="checkbox"
-							checked={gift.checked}
+							checked={gift.claimed}
 							onchange={() => onToggleGift(gift.id)}
 							class="text-primary focus:ring-ring h-4 w-4 rounded border"
 						/>
-						<span class={gift.checked ? 'text-muted-foreground line-through' : ''}>{gift.name}</span>
+						<span class={gift.claimed ? 'text-muted-foreground line-through' : ''}>{gift.name}</span>
 					</label>
-					<span class="text-muted-foreground text-xs">{gift.checked ? 'Reservert' : 'Ledig'}</span>
+					<span class="text-muted-foreground text-xs">{gift.claimed ? 'Reservert' : 'Ledig'}</span>
 				</div>
 			{/snippet}
 		</AnimatedList>

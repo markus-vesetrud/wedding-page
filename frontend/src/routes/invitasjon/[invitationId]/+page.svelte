@@ -1,14 +1,14 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { page } from '$app/state';
-  import type { Guest, Invitation, WsDeltaUpdate } from '$shared/types';
+  import { Attendance, type Guest, type Invitation, type WsDeltaUpdate } from '$shared/types';
   import * as Card from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
 
   type Member = {
     id: string;
     name: string;
-    attending: boolean;
+    attendance: Attendance;
     notes: string;
   };
 
@@ -28,12 +28,9 @@
     members = members.map((member) => (member.id === memberId ? updater(member) : member));
   }
 
-  async function callListEndpoint(
-    action: 'add' | 'checked' | 'unchecked' | 'notes',
-    payload: Record<string, unknown>
-  ): Promise<WsDeltaUpdate | null> {
+  async function callListEndpoint(payload: Record<string, unknown>): Promise<WsDeltaUpdate | null> {
     try {
-      const res = await fetch(`/api/lists/guests/${action}`, {
+      const res = await fetch('/api/update/guests', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload)
@@ -56,7 +53,7 @@
     members = guests.map((guest) => ({
       id: guest.id,
       name: guest.name,
-      attending: guest.checked,
+      attendance: guest.attendance,
       notes: guest.allergies ?? ''
     }));
   }
@@ -89,26 +86,20 @@
     }
   }
 
-  async function setAttendance(memberId: string, attending: boolean) {
+  async function setAttendance(memberId: string, attendance: Attendance) {
     error = '';
-    const member = members.find((entry) => entry.id === memberId);
-    if (!member) return;
+    upsertMember(memberId, (current) => ({ ...current, attendance }));
 
-    upsertMember(memberId, (current) => ({ ...current, attending }));
-
-    const update =
-      attending
-        ? await callListEndpoint('checked', {
-            id: memberId,
-            allergies: member.notes
-          })
-        : await callListEndpoint('unchecked', { id: memberId });
+    const update = await callListEndpoint({
+      id: memberId,
+      patch: { attendance }
+    });
 
     if (update?.list === 'guests') {
       const guest = update.item as Guest;
       upsertMember(memberId, (current) => ({
         ...current,
-        attending: guest.checked,
+        attendance: guest.attendance,
         notes: guest.allergies ?? current.notes
       }));
     }
@@ -136,16 +127,18 @@
 
   async function submitNotes(memberId: string, value: string) {
     error = '';
-    const update = await callListEndpoint('notes', {
+    const update = await callListEndpoint({
       id: memberId,
-      allergies: value
+      patch: {
+        allergies: value
+      }
     });
 
     if (update?.list === 'guests') {
       const guest = update.item as Guest;
       upsertMember(memberId, (current) => ({
         ...current,
-        attending: guest.checked,
+        attendance: guest.attendance,
         notes: guest.allergies ?? ''
       }));
     }
@@ -217,8 +210,8 @@
                         <input
                           type="radio"
                           name={`attendance-${member.id}`}
-                          checked={member.attending}
-                          onchange={() => setAttendance(member.id, true)}
+                          checked={member.attendance === Attendance.Attending}
+                          onchange={() => setAttendance(member.id, Attendance.Attending)}
                           class="h-4 w-4 rounded-full border"
                         />
                       </label>
@@ -228,8 +221,8 @@
                         <input
                           type="radio"
                           name={`attendance-${member.id}`}
-                          checked={!member.attending}
-                          onchange={() => setAttendance(member.id, false)}
+                          checked={member.attendance === Attendance.NotAttending}
+                          onchange={() => setAttendance(member.id, Attendance.NotAttending)}
                           class="h-4 w-4 rounded-full border"
                         />
                       </label>
