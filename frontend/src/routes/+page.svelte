@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { createWebSocket } from '$lib/websocket';
-	import type { AppState, Cake, Gift, Guest, Item, ListName, WsDeltaMessage } from '$lib/types';
+	import type { AppState, Cake, Gift, Guest, Item, ListName, WsDeltaUpdate } from '$shared/types';
 	import WelcomeSection from '$lib/components/sections/welcome-section.svelte';
 	import PracticalSection from '$lib/components/sections/practical-section.svelte';
 	import ProgramSection from '$lib/components/sections/program-section.svelte';
@@ -132,7 +132,7 @@
 		return newList;
 	}
 
-	function applyDelta(update: WsDeltaMessage) {
+	function applyDelta(update: WsDeltaUpdate) {
 		if (update.list === 'gifts') {
 			gifts = upsertItem(gifts, update.item as Gift);
 			return;
@@ -152,7 +152,7 @@
 		list: ListName,
 		action: 'add' | 'checked' | 'unchecked',
 		payload: Record<string, unknown>
-	): Promise<WsDeltaMessage | null> {
+	): Promise<WsDeltaUpdate | null> {
 		try {
 			const res = await fetch(`/api/lists/${list}/${action}`, {
 				method: 'POST',
@@ -165,7 +165,7 @@
 				return null;
 			}
 
-			const json = (await res.json()) as { update?: WsDeltaMessage };
+			const json = (await res.json()) as { update?: WsDeltaUpdate };
 			return json.update ?? null;
 		} catch (error) {
 			console.error('list endpoint error', error);

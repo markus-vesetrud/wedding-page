@@ -13,17 +13,17 @@ import {
   uncheckItem,
   updateGuestNotes
 } from './state.js';
-import type { DeltaUpdate } from './types.js';
+import type { AppState, Guest, WsDeltaUpdate } from '../../shared/types.js';
 
 export interface RouteDependencies {
   publicDir: string;
-  readState: () => Promise<import('./types.js').AppState>;
-  writeState: (state: import('./types.js').AppState) => Promise<void>;
+  readState: () => Promise<AppState>;
+  writeState: (state: AppState) => Promise<void>;
   appendStateChangeLog: (
-    update: DeltaUpdate,
-    state: import('./types.js').AppState
+    update: WsDeltaUpdate,
+    state: AppState
   ) => Promise<void>;
-  broadcastJson: (message: DeltaUpdate) => void;
+  broadcastJson: (message: WsDeltaUpdate) => void;
 }
 
 export function registerRoutes(app: Express, deps: RouteDependencies): void {
@@ -70,7 +70,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
 
         const guests = invitation.guestIds
           .map((guestId) => state.guests.find((guest) => guest.id === guestId))
-          .filter((guest): guest is import('./types.js').Guest => Boolean(guest));
+          .filter((guest): guest is Guest => Boolean(guest));
 
         return { invitation, guests };
       });
@@ -104,7 +104,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
     try {
       const update = await withMutationLock(async () => {
         const state = await deps.readState();
-        let result: DeltaUpdate | null = null;
+        let result: WsDeltaUpdate | null = null;
 
         if (action === 'add') {
           const { name } = parseAddBody(req.body);

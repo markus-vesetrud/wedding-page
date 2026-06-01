@@ -1,6 +1,6 @@
 import { type Server as HttpServer } from 'node:http';
 import { WebSocket, WebSocketServer } from 'ws';
-import type { AppState, DeltaUpdate } from './types.js';
+import type { AppState, WsDeltaUpdate } from '../../shared/types.js';
 
 const supportedProtocol = 'json.webpubsub.azure.v1';
 
@@ -36,7 +36,7 @@ export function setupWebSocket(server: HttpServer, handlers: WebSocketHandlers) 
     ws.send(JSON.stringify({ type: 'state', data: state }));
   });
 
-  function broadcastJson(message: DeltaUpdate): void {
+  function broadcastJson(message: WsDeltaUpdate): void {
     const payload = JSON.stringify(message);
     for (const client of wss.clients) {
       if (client.readyState === WebSocket.OPEN) {

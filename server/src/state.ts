@@ -3,15 +3,15 @@ import { promises as fs } from 'node:fs';
 import { HttpError } from './errors.js';
 import type {
   AppState,
-  BaseItem,
+  Item,
   Cake,
-  DeltaUpdate,
+  WsDeltaUpdate,
   Gift,
   Guest,
   Invitation,
   ListEntity,
   ListName
-} from './types.js';
+} from '../../shared/types.js';
 
 const defaultState: AppState = {
   gifts: [],
@@ -88,7 +88,7 @@ function parseOptionalString(
   return value;
 }
 
-function parseBaseItem(raw: unknown, context: string): BaseItem {
+function parseBaseItem(raw: unknown, context: string): Item {
   if (!isRecord(raw)) {
     throw new HttpError(`${context} must be an object`, 400);
   }
@@ -360,7 +360,7 @@ export function createStateStore(storageDir: string) {
     await writeListFile(listFiles.invitations, state.invitations);
   }
 
-  async function appendStateChangeLog(update: DeltaUpdate, state: AppState): Promise<void> {
+  async function appendStateChangeLog(update: WsDeltaUpdate, state: AppState): Promise<void> {
     await ensureStateFileExists();
 
     const entry = {
@@ -391,8 +391,8 @@ export function requiredCheckField(list: ListName): 'gifterName' | 'bakerName' |
   return 'allergies';
 }
 
-export function addItem(state: AppState, list: ListName, name: string): DeltaUpdate {
-  const base: BaseItem = {
+export function addItem(state: AppState, list: ListName, name: string): WsDeltaUpdate {
+  const base: Item = {
     id: makeId(),
     name,
     checked: false,
@@ -408,7 +408,7 @@ export function addItem(state: AppState, list: ListName, name: string): DeltaUpd
   return { type: 'item-added', list, item };
 }
 
-export function checkItem(state: AppState, list: ListName, id: string, value: string): DeltaUpdate | null {
+export function checkItem(state: AppState, list: ListName, id: string, value: string): WsDeltaUpdate | null {
   if (list === 'gifts') {
     const item = state.gifts.find((entry) => entry.id === id);
     if (!item) return null;
@@ -435,7 +435,7 @@ export function checkItem(state: AppState, list: ListName, id: string, value: st
   return { type: 'item-checked', list, item };
 }
 
-export function uncheckItem(state: AppState, list: ListName, id: string): DeltaUpdate | null {
+export function uncheckItem(state: AppState, list: ListName, id: string): WsDeltaUpdate | null {
   if (list === 'gifts') {
     const item = state.gifts.find((entry) => entry.id === id);
     if (!item) return null;
@@ -465,7 +465,7 @@ export function updateGuestNotes(
   state: AppState,
   id: string,
   notes: string
-): DeltaUpdate | null {
+): WsDeltaUpdate | null {
   const item = state.guests.find((entry) => entry.id === id);
   if (!item) return null;
 

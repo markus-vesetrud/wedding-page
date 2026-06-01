@@ -1,4 +1,4 @@
-import type { Item } from '$lib/types';
+import type { Item } from '$shared/types';
 
 function updatedAtMs(updatedAt: string): number {
 	const parsed = Date.parse(updatedAt);

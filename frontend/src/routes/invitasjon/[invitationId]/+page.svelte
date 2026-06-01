@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
   import { page } from '$app/state';
-  import type { Guest, Invitation, WsDeltaMessage } from '$lib/types';
+  import type { Guest, Invitation, WsDeltaUpdate } from '$shared/types';
   import * as Card from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
 
@@ -31,7 +31,7 @@
   async function callListEndpoint(
     action: 'add' | 'checked' | 'unchecked' | 'notes',
     payload: Record<string, unknown>
-  ): Promise<WsDeltaMessage | null> {
+  ): Promise<WsDeltaUpdate | null> {
     try {
       const res = await fetch(`/api/lists/guests/${action}`, {
         method: 'POST',
@@ -44,7 +44,7 @@
         throw new Error(body.error ?? `Request failed (${res.status})`);
       }
 
-      const json = (await res.json()) as { update?: WsDeltaMessage };
+      const json = (await res.json()) as { update?: WsDeltaUpdate };
       return json.update ?? null;
     } catch (e) {
       error = e instanceof Error ? e.message : 'Kunne ikke oppdatere gjesteliste.';

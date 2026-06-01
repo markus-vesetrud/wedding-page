@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Gift } from '$lib/types';
+	import type { Gift } from '$shared/types';
 	import { sortByCheckedAndUpdatedAt } from '$lib/item-sorting';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';

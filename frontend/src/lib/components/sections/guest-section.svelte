@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Guest } from '$lib/types';
+	import type { Guest } from '$shared/types';
 	import SectionShell from '$lib/components/sections/section-shell.svelte';
 	import AnimatedList from '$lib/components/sections/animated-list.svelte';
 

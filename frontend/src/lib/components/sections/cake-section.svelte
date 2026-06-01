@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { Cake } from '$lib/types';
+    import type { Cake } from '$shared/types';
     import { sortByCheckedAndUpdatedAt } from '$lib/item-sorting';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';

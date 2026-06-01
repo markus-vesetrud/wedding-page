@@ -36,14 +36,11 @@ export interface AppState {
 export type ListName = keyof AppState;
 export type ListEntity = Gift | Cake | Guest;
 
-export type WsDeltaMessage =
+export type WsDeltaUpdate =
   | { type: 'item-added'; list: ListName; item: ListEntity }
   | { type: 'item-checked'; list: ListName; item: ListEntity }
   | { type: 'item-unchecked'; list: ListName; item: ListEntity };
 
 export type WsMessage =
   | { type: 'state'; data: AppState }
-  | WsDeltaMessage;
-
-export type DeltaUpdate = WsDeltaMessage;
-export type BaseItem = Item;
+  | WsDeltaUpdate;
