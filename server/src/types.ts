@@ -3,6 +3,7 @@ export type {
   Gift,
   Guest,
   Cake,
+  Invitation,
   AppState,
   ListName,
   ListEntity,

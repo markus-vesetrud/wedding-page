@@ -7,6 +7,7 @@ export interface Item {
 
 export interface Guest extends Item {
   allergies?: string;
+  invitationId?: string;
 }
 
 export interface Cake extends Item {
@@ -18,14 +19,22 @@ export interface Gift extends Item {
   gifterName?: string;
 }
 
+export interface Invitation {
+  id: string;
+  name: string;
+  guestIds: string[];
+  visitedAt: string[];
+}
+
 export interface AppState {
   gifts: Gift[];
   guests: Guest[];
   cakes: Cake[];
+  invitations: Invitation[];
 }
 
 export type ListName = keyof AppState;
-export type ListEntity = Gift | Guest | Cake;
+export type ListEntity = Gift | Cake | Guest;
 
 export type WsDeltaMessage =
   | { type: 'item-added'; list: ListName; item: ListEntity }

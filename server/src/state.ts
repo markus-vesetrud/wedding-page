@@ -8,6 +8,7 @@ import type {
   DeltaUpdate,
   Gift,
   Guest,
+  Invitation,
   ListEntity,
   ListName
 } from './types.js';
@@ -15,13 +16,15 @@ import type {
 const defaultState: AppState = {
   gifts: [],
   guests: [],
-  cakes: []
+  cakes: [],
+  invitations: []
 };
 
 const listFileNames: Record<ListName, string> = {
   gifts: 'gifts.json',
   guests: 'guests.json',
-  cakes: 'cakes.json'
+  cakes: 'cakes.json',
+  invitations: 'invitations.json'
 };
 
 const changeLogFileName = 'state-changes.log';
@@ -110,15 +113,48 @@ function parseGift(raw: unknown, context: string): Gift {
   };
 }
 
+function parseStringArray(raw: unknown, context: string): string[] {
+  if (!Array.isArray(raw)) {
+    throw new HttpError(`${context} must be an array`, 400);
+  }
+
+  const values: string[] = [];
+  for (let index = 0; index < raw.length; index += 1) {
+    const value = raw[index];
+    if (typeof value !== 'string') {
+      throw new HttpError(`${context}[${index}] must be a string`, 400);
+    }
+    values.push(value);
+  }
+
+  return values;
+}
+
+function parseInvitation(raw: unknown, context: string): Invitation {
+  if (!isRecord(raw)) {
+    throw new HttpError(`${context} must be an object`, 400);
+  }
+
+  assertAllowedKeys(raw, ['id', 'name', 'guestIds', 'visitedAt'], context);
+
+  return {
+    id: parseRequiredString(raw, 'id', context),
+    name: parseRequiredString(raw, 'name', context),
+    guestIds: parseStringArray(raw.guestIds, `${context}.guestIds`),
+    visitedAt: parseStringArray(raw.visitedAt, `${context}.visitedAt`)
+  };
+}
+
 function parseGuest(raw: unknown, context: string): Guest {
   if (!isRecord(raw)) {
     throw new HttpError(`${context} must be an object`, 400);
   }
-  assertAllowedKeys(raw, ['id', 'name', 'checked', 'updatedAt', 'allergies'], context);
+  assertAllowedKeys(raw, ['id', 'name', 'checked', 'updatedAt', 'allergies', 'invitationId'], context);
   const base = parseBaseItem(raw, context);
   return {
     ...base,
-    allergies: parseOptionalString(raw, 'allergies', context)
+    allergies: parseOptionalString(raw, 'allergies', context),
+    invitationId: parseOptionalString(raw, 'invitationId', context)
   };
 }
 
@@ -144,11 +180,12 @@ export function parseState(input: unknown): AppState {
     throw new HttpError('State must be an object', 400);
   }
 
-  assertAllowedKeys(input, ['gifts', 'guests', 'cakes'], 'state');
+  assertAllowedKeys(input, ['gifts', 'guests', 'cakes', 'invitations'], 'state');
 
   const giftsRaw = input.gifts;
   const guestsRaw = input.guests;
   const cakesRaw = input.cakes;
+  const invitationsRaw = input.invitations;
 
   if (!Array.isArray(giftsRaw)) {
     throw new HttpError('state.gifts must be an array', 400);
@@ -159,11 +196,15 @@ export function parseState(input: unknown): AppState {
   if (!Array.isArray(cakesRaw)) {
     throw new HttpError('state.cakes must be an array', 400);
   }
+  if (!Array.isArray(invitationsRaw)) {
+    throw new HttpError('state.invitations must be an array', 400);
+  }
 
   return {
     gifts: giftsRaw.map((entry, index) => parseGift(entry, `state.gifts[${index}]`)),
     guests: guestsRaw.map((entry, index) => parseGuest(entry, `state.guests[${index}]`)),
-    cakes: cakesRaw.map((entry, index) => parseCake(entry, `state.cakes[${index}]`))
+    cakes: cakesRaw.map((entry, index) => parseCake(entry, `state.cakes[${index}]`)),
+    invitations: invitationsRaw.map((entry, index) => parseInvitation(entry, `state.invitations[${index}]`))
   };
 }
 
@@ -202,12 +243,41 @@ export function parseUncheckedBody(body: unknown): { id: string } {
   return { id: parseRequiredString(body, 'id', 'body') };
 }
 
+export function parseGuestNotesBody(
+  body: unknown
+): { id: string; value: string; completed: boolean } {
+  if (!isRecord(body)) {
+    throw new HttpError('Request body must be an object', 400);
+  }
+
+  assertAllowedKeys(body, ['id', 'allergies', 'completed'], 'body');
+
+  const id = parseRequiredString(body, 'id', 'body');
+  const rawValue = body.allergies;
+  if (typeof rawValue !== 'string') {
+    throw new HttpError('body.allergies must be a string', 400);
+  }
+
+  const rawCompleted = body.completed;
+  if (rawCompleted !== undefined && typeof rawCompleted !== 'boolean') {
+    throw new HttpError('body.completed must be a boolean when provided', 400);
+  }
+
+  return {
+    id,
+    value: rawValue,
+    completed: rawCompleted === true
+  };
+}
+
 export function createStateStore(storageDir: string) {
   const listFiles: Record<ListName, string> = {
     gifts: path.join(storageDir, listFileNames.gifts),
     guests: path.join(storageDir, listFileNames.guests),
-    cakes: path.join(storageDir, listFileNames.cakes)
+    cakes: path.join(storageDir, listFileNames.cakes),
+    invitations: path.join(storageDir, listFileNames.invitations),
   };
+
   const changeLogFile = path.join(storageDir, changeLogFileName);
 
   async function exists(filePath: string): Promise<boolean> {
@@ -235,14 +305,6 @@ export function createStateStore(storageDir: string) {
   async function ensureStateFileExists(): Promise<void> {
     await fs.mkdir(storageDir, { recursive: true });
 
-    const giftsExists = await exists(listFiles.gifts);
-    const guestsExists = await exists(listFiles.guests);
-    const cakesExists = await exists(listFiles.cakes);
-
-    if (giftsExists && guestsExists && cakesExists) {
-      return;
-    }
-
     if (!(await exists(listFiles.gifts))) {
       await writeListFile(listFiles.gifts, defaultState.gifts);
     }
@@ -252,7 +314,9 @@ export function createStateStore(storageDir: string) {
     if (!(await exists(listFiles.cakes))) {
       await writeListFile(listFiles.cakes, defaultState.cakes);
     }
-
+    if (!(await exists(listFiles.invitations))) {
+      await writeListFile(listFiles.invitations, defaultState.invitations);
+    }
     if (!(await exists(changeLogFile))) {
       await fs.writeFile(changeLogFile, '', 'utf8');
     }
@@ -264,6 +328,7 @@ export function createStateStore(storageDir: string) {
     const giftsRaw = await readJsonFile(listFiles.gifts, 'gifts.json');
     const guestsRaw = await readJsonFile(listFiles.guests, 'guests.json');
     const cakesRaw = await readJsonFile(listFiles.cakes, 'cakes.json');
+    const invitationsRaw = await readJsonFile(listFiles.invitations, 'invitations.json');
 
     if (!Array.isArray(giftsRaw)) {
       throw new HttpError('gifts.json must contain an array', 400);
@@ -274,11 +339,15 @@ export function createStateStore(storageDir: string) {
     if (!Array.isArray(cakesRaw)) {
       throw new HttpError('cakes.json must contain an array', 400);
     }
+    if (!Array.isArray(invitationsRaw)) {
+      throw new HttpError('invitations.json must contain an array', 400);
+    }
 
     return {
       gifts: giftsRaw.map((entry, index) => parseGift(entry, `gifts[${index}]`)),
       guests: guestsRaw.map((entry, index) => parseGuest(entry, `guests[${index}]`)),
-      cakes: cakesRaw.map((entry, index) => parseCake(entry, `cakes[${index}]`))
+      cakes: cakesRaw.map((entry, index) => parseCake(entry, `cakes[${index}]`)),
+      invitations: invitationsRaw.map((entry, index) => parseInvitation(entry, `invitations[${index}]`))
     };
   }
 
@@ -288,6 +357,7 @@ export function createStateStore(storageDir: string) {
     await writeListFile(listFiles.gifts, state.gifts);
     await writeListFile(listFiles.guests, state.guests);
     await writeListFile(listFiles.cakes, state.cakes);
+    await writeListFile(listFiles.invitations, state.invitations);
   }
 
   async function appendStateChangeLog(update: DeltaUpdate, state: AppState): Promise<void> {
@@ -299,7 +369,8 @@ export function createStateStore(storageDir: string) {
       totals: {
         gifts: state.gifts.length,
         guests: state.guests.length,
-        cakes: state.cakes.length
+        cakes: state.cakes.length,
+        invitations: state.invitations.length
       }
     };
 
@@ -379,7 +450,6 @@ export function uncheckItem(state: AppState, list: ListName, id: string): DeltaU
     if (!item) return null;
     item.checked = false;
     item.updatedAt = nowIso();
-    delete item.allergies;
     return { type: 'item-unchecked', list, item };
   }
 
@@ -391,6 +461,24 @@ export function uncheckItem(state: AppState, list: ListName, id: string): DeltaU
   return { type: 'item-unchecked', list, item };
 }
 
+export function updateGuestNotes(
+  state: AppState,
+  id: string,
+  notes: string
+): DeltaUpdate | null {
+  const item = state.guests.find((entry) => entry.id === id);
+  if (!item) return null;
+
+  item.allergies = notes;
+  item.updatedAt = nowIso();
+  return { type: 'item-checked', list: 'guests', item };
+}
+
 export function isListName(value: string): value is ListName {
   return validLists.has(value as ListName);
+}
+
+export function markInvitationVisited(invitation: Invitation): Invitation {
+  invitation.visitedAt = [...invitation.visitedAt, nowIso()];
+  return invitation;
 }

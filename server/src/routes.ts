@@ -5,10 +5,13 @@ import {
   addItem,
   checkItem,
   isListName,
+  markInvitationVisited,
   parseAddBody,
   parseCheckedBody,
+  parseGuestNotesBody,
   parseUncheckedBody,
-  uncheckItem
+  uncheckItem,
+  updateGuestNotes
 } from './state.js';
 import type { DeltaUpdate } from './types.js';
 
@@ -50,6 +53,38 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
     res.json({ url: `${protocol}://${host}/ws` });
   });
 
+  app.get('/api/invitations/:id', async (req: Request<{ id: string }>, res: Response) => {
+    const id = decodeURIComponent(req.params.id);
+
+    try {
+      const payload = await withMutationLock(async () => {
+        const state = await deps.readState();
+        let invitation = state.invitations.find((invitation) => invitation.id === id);
+        if (!invitation) {
+          throw new HttpError('Invitation not found', 404);
+        }
+
+        invitation = markInvitationVisited(invitation);
+
+        await deps.writeState(state);
+
+        const guests = invitation.guestIds
+          .map((guestId) => state.guests.find((guest) => guest.id === guestId))
+          .filter((guest): guest is import('./types.js').Guest => Boolean(guest));
+
+        return { invitation, guests };
+      });
+
+      res.json(payload);
+    } catch (error: unknown) {
+      if (error instanceof HttpError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      res.status(500).json({ error: 'Unexpected error' });
+    }
+  });
+
   app.post('/api/lists/:list/:action', async (req: Request<{ list: string; action: string }>, res: Response) => {
     const listParam = req.params.list;
     const action = req.params.action;
@@ -61,7 +96,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
 
     const list = listParam;
 
-    if (!['add', 'checked', 'unchecked'].includes(action)) {
+    if (!['add', 'checked', 'unchecked', 'notes'].includes(action)) {
       res.status(400).json({ error: 'Invalid action' });
       return;
     }
@@ -89,6 +124,18 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
           const { id } = parseUncheckedBody(req.body);
 
           result = uncheckItem(state, list, id);
+          if (!result) {
+            throw new HttpError('Item not found', 404);
+          }
+        }
+
+        if (action === 'notes') {
+          if (list !== 'guests') {
+            throw new HttpError('Notes action is only supported for guests', 400);
+          }
+
+          const { id, value } = parseGuestNotesBody(req.body);
+          result = updateGuestNotes(state, id, value);
           if (!result) {
             throw new HttpError('Item not found', 404);
           }
