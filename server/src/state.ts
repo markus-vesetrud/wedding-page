@@ -379,7 +379,6 @@ export function createStateStore(storageDir: string) {
       invitations: invitationsRaw.map((entry, index) => parseInvitation(entry, `invitations[${index}]`))
     };
 
-    normalizeLegacyState(state);
     writeState(state);
     return state;
   }
@@ -483,29 +482,6 @@ export function updateItem(
   }
 
   return null;
-}
-
-export function normalizeLegacyState(state: AppState): void {
-  for (const gift of state.gifts as Array<Gift & { checked?: boolean }>) {
-    if ((gift as { claimed?: boolean }).claimed === undefined) {
-      gift.claimed = Boolean(gift.checked);
-    }
-    delete gift.checked;
-  }
-
-  for (const cake of state.cakes as Array<Cake & { checked?: boolean }>) {
-    if ((cake as { claimed?: boolean }).claimed === undefined) {
-      cake.claimed = Boolean(cake.checked);
-    }
-    delete cake.checked;
-  }
-
-  for (const guest of state.guests as Array<Guest & { checked?: boolean }>) {
-    if ((guest as { attendance?: Attendance }).attendance === undefined) {
-      guest.attendance = guest.checked ? Attendance.Attending : Attendance.NotAttending;
-    }
-    delete guest.checked;
-  }
 }
 
 export function migrateLegacyRecord(raw: unknown, list: 'gifts' | 'cakes' | 'guests'): unknown {
