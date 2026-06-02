@@ -15,7 +15,7 @@
 
 </script>
 
-<SectionShell id="gjester" title="Gjesteliste" ingress="Oversikt over gjestene som er invitert.">
+<SectionShell id="gjester" title="Gjesteliste" ingress="Oversikt over gjestene som er invitert." includeMarginBottom={false}>
 	<div class="space-y-4">
 		<AnimatedList items={guests} {isLoading} emptyText="Ingen gjester i listen ennå." loadingCount={4}>
 			{#snippet children(guest)}

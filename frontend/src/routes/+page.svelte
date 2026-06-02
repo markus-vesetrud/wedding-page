@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { page } from '$app/state';
 	import { createWebSocket } from '$lib/websocket';
 	import { Attendance, type AppState, type Cake, type WsDeltaType, type Gift, type Guest, type Item, type ListName, type WsDeltaUpdate } from '$shared/types';
 	import WelcomeSection from '$lib/components/sections/welcome-section.svelte';
@@ -16,7 +17,7 @@
 	type ListKind = 'gift' | 'guest' | 'cake';
 	type SectionId = 'velkommen' | 'praktisk' | 'program' | 'gjester' | 'gaver' | 'kaker';
 
-	const TAB_STICKY_TOP_PX = 8;
+	const TAB_STICKY_TOP_PX = 0;
 	const TAB_SCROLL_MARGIN_GAP_PX = 8;
 
 	const sectionTabs: Array<{ id: SectionId; label: string }> = [
@@ -28,6 +29,8 @@
 		{ id: 'gjester', label: 'Gjesteliste' }
 	];
 
+	const invitationId = $derived((page.url.searchParams.get('invitationId') ?? '').trim());
+
 	let gifts = $state<Gift[]>([]);
 	let guests = $state<Guest[]>([]);
 	let cakes = $state<Cake[]>([]);
@@ -35,7 +38,6 @@
 	let activeSection = $state<SectionId>('velkommen');
 	let showConnectionStatus = $state(true);
 	let newGift = $state('');
-	let newGuest = $state('');
 	let newCake = $state('');
 
 	let checkModalOpen = $state(false);
@@ -53,6 +55,7 @@
 
 	let ws: ReturnType<typeof createWebSocket> | null = null;
 	let hideConnectionStatusTimer: ReturnType<typeof setTimeout> | null = null;
+	let scrollContainerElement: HTMLElement | null = null;
 	let tabsNavElement: HTMLElement | null = null;
 	let tabResizeObserver: ResizeObserver | null = null;
 	let tabBarHeightPx = $state(72);
@@ -68,7 +71,8 @@
 	}
 
 	function updateActiveSectionFromViewport() {
-		const focusLine = window.scrollY + window.innerHeight * 0.3;
+		if (!scrollContainerElement) return;
+		const focusLine = scrollContainerElement.scrollTop + scrollContainerElement.clientHeight * 0.3
 		let chosen: SectionId = sectionTabs[0].id;
 
 		for (const tab of sectionTabs) {
@@ -90,15 +94,21 @@
 
 	function sectionTop(id: SectionId) {
 		const section = document.getElementById(id);
-		if (!section) return null;
-		if (id === 'velkommen') return section.getBoundingClientRect().top + window.scrollY;
-		return section.getBoundingClientRect().top + window.scrollY - stickyOffset();
+		if (!section || !scrollContainerElement) return null;
+
+		const sectionRect = section.getBoundingClientRect();
+		const containerRect = scrollContainerElement.getBoundingClientRect();
+		const top = sectionRect.top - containerRect.top + scrollContainerElement.scrollTop;
+		if (id === 'velkommen') return top;
+		return top - stickyOffset();
+
 	}
 
 	function scrollToSection(id: SectionId) {
 		const top = sectionTop(id);
 		if (top === null) return;
-		window.scrollTo({ top, behavior: 'smooth' });
+
+		scrollContainerElement?.scrollTo({ top, behavior: 'smooth' });
 	}
 
 	function listName(kind: ListKind): ListName {
@@ -332,13 +342,13 @@
 		}
 
 		syncTabMetrics();
-		window.addEventListener('resize', onResize);
-		window.addEventListener('scroll', onScroll, { passive: true });
+		scrollContainerElement?.addEventListener('resize', onResize);
+		scrollContainerElement?.addEventListener('scroll', onScroll, { passive: true });
 		queueActiveSectionUpdate();
 
 		return () => {
-			window.removeEventListener('resize', onResize);
-			window.removeEventListener('scroll', onScroll);
+			scrollContainerElement?.removeEventListener('resize', onResize);
+			scrollContainerElement?.removeEventListener('scroll', onScroll);
 			tabResizeObserver?.disconnect();
 			tabResizeObserver = null;
 			if (scrollRafId !== null) {
@@ -354,32 +364,32 @@
 	});
 </script>
 
-<div
-	class="mx-auto w-full max-w-2xl px-4 py-8 md:px-6 lg:py-12"
-	style={`--tabs-height: ${tabBarHeightPx}px; --tabs-sticky-top: ${TAB_STICKY_TOP_PX}px; --tabs-scroll-gap: ${TAB_SCROLL_MARGIN_GAP_PX}px;`}
->
-	<main>
-		<WelcomeSection />
+<div bind:this={scrollContainerElement} class="main-page">
+	<main
+		class="mx-auto w-full max-w-2xl px-4 md:px-6"
+		style={`--tabs-height: ${tabBarHeightPx}px; --tabs-sticky-top: ${TAB_STICKY_TOP_PX}px; --tabs-scroll-gap: ${TAB_SCROLL_MARGIN_GAP_PX}px;`}
+	>
+		<WelcomeSection {invitationId} isMainPage={true} />
 
 		<nav bind:this={tabsNavElement} class="sticky top-2 z-30 mb-4 rounded-xl border bg-background/90 p-2 backdrop-blur">
-			<ul class="grid grid-cols-2 gap-2 min-[440px]:grid-cols-3 min-[850px]:grid-cols-6">
-				{#each sectionTabs as tab}
-					<li>
-						<button
-							type="button"
-							onclick={() => scrollToSection(tab.id)}
-							class={`w-full rounded-md px-2 py-2 text-sm font-medium transition-colors ${activeSection === tab.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
-						>
-							{tab.label}
-						</button>
-					</li>
-				{/each}
-			</ul>
-			{#if !connected || showConnectionStatus}
-				<p class="text-muted-foreground mt-2 text-center text-xs">
-					{connected ? 'Tilkoblet' : 'Kobler til ...'}
-				</p>
-			{/if}
+		<ul class="grid grid-cols-2 gap-2 min-[440px]:grid-cols-3 min-[850px]:grid-cols-6">
+			{#each sectionTabs as tab}
+				<li>
+					<button
+						type="button"
+						onclick={() => scrollToSection(tab.id)}
+						class={`w-full rounded-md px-2 py-2 text-sm font-medium transition-colors ${activeSection === tab.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
+					>
+						{tab.label}
+					</button>
+				</li>
+			{/each}
+		</ul>
+		{#if !connected || showConnectionStatus}
+			<p class="text-muted-foreground mt-2 text-center text-xs">
+				{connected ? 'Tilkoblet' : 'Kobler til ...'}
+			</p>
+		{/if}
 		</nav>
 
 		<PracticalSection />
@@ -400,7 +410,7 @@
 			onAddCake={addCake}
 			onToggleCake={toggleCake}
 		/>
-    <GuestSection
+		<GuestSection
 			{guests}
 			isLoading={!connected}
 		/>
@@ -445,27 +455,29 @@
 {/if}
 
 <style>
-	:global(html) {
+	.main-page {
+		width: 100%;
+		height: 100svh;
+		overflow-y: auto;
 		scroll-behavior: smooth;
 		scroll-snap-type: y proximity;
 	}
 
-	:global(section[id]) {
+	.main-page :global(section[id]) {
 		scroll-snap-align: start;
 	}
 
-	:global(section[id='velkommen']) {
+	.main-page :global(section[id='velkommen']) {
 		scroll-margin-top: 0;
 	}
 
-	:global(section[id]:not([id='velkommen'])) {
+	.main-page :global(section[id]:not([id='velkommen'])) {
 		scroll-margin-top: calc(var(--tabs-height, 72px) + var(--tabs-sticky-top, 8px) + var(--tabs-scroll-gap, 8px));
 	}
 
-	:global(main > section[id]:last-of-type) {
-		min-height: calc(100svh - var(--tabs-height, 72px));
+	.main-page :global(main > section[id]:last-of-type) {
+		min-height: calc(100svh - var(--tabs-height, 72px) - 8px);
 	}
-  
 </style>
 
 {#if uncheckModalOpen}

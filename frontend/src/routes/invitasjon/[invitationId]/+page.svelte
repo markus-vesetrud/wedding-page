@@ -2,6 +2,7 @@
   import { onDestroy, onMount } from 'svelte';
   import { page } from '$app/state';
   import { Attendance, type Guest, type Invitation, type WsDeltaUpdate } from '$shared/types';
+  import WelcomeSection from '$lib/components/sections/welcome-section.svelte';
   import * as Card from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
 
@@ -15,6 +16,7 @@
   const notesAutosaveDelayMs = 2000;
 
   const invitationId = $derived(decodeURIComponent(page.params.invitationId ?? ''));
+  const mainMenuHref = $derived(`/?invitationId=${encodeURIComponent(invitationId)}`);
   const weddingDateLabel = 'Lørdag 31. juli 2027';
 
   let loading = $state(true);
@@ -156,7 +158,9 @@
   });
 </script>
 
-<div class="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 md:px-6 lg:py-12">
+<div class="mx-auto w-full max-w-2xl space-y-6 pb-20 px-4 md:px-6">
+  <WelcomeSection {invitationId} isMainPage={false} />
+
   {#if loading}
     <Card.Root>
       <Card.Content class="py-8 text-center text-sm text-muted-foreground">Laster invitasjon ...</Card.Content>
@@ -169,12 +173,7 @@
       </Card.Header>
     </Card.Root>
   {:else if invitation}
-    <Card.Root class="overflow-hidden">
-      <img
-        src="https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1600&q=80"
-        alt="Brudepar"
-        class="h-72 w-full object-cover md:h-96"
-      />
+    <Card.Root>
       <Card.Header>
         <Card.Title class="text-3xl">Velkommen, {invitation.name}</Card.Title>
         <Card.Description>
@@ -256,5 +255,14 @@
         {/if}
       </Card.Content>
     </Card.Root>
+
+    <div class="flex justify-center">
+      <a
+        href={mainMenuHref}
+        class="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
+      >
+        Til hovedmeny
+      </a>
+    </div>
   {/if}
 </div>
