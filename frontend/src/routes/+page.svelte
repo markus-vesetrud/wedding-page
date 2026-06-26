@@ -2,17 +2,14 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import { createWebSocket } from '$lib/websocket';
-	import { Attendance, type AppState, type Cake, type WsDeltaType, type Gift, type Guest, type Item, type ListName, type WsDeltaUpdate } from '$shared/types';
+	import { type AppState, type Cake, type WsDeltaType, type Gift, type Guest, type Item, type ListName, type WsDeltaUpdate } from '$shared/types';
 	import WelcomeSection from '$lib/components/sections/welcome-section.svelte';
 	import PracticalSection from '$lib/components/sections/practical-section.svelte';
 	import ProgramSection from '$lib/components/sections/program-section.svelte';
 	import GuestSection from '$lib/components/sections/guest-section.svelte';
 	import GiftSection from '$lib/components/sections/gift-section.svelte';
 	import CakeSection from '$lib/components/sections/cake-section.svelte';
-	import * as Card from '$lib/components/ui/card';
-	import { Button } from '$lib/components/ui/button';
-	import { Input } from '$lib/components/ui/input';
-	import { Textarea } from '$lib/components/ui/textarea';
+	import { captalize } from '$lib/utils/capitalize';
 
 	type ListKind = 'gift' | 'guest' | 'cake';
 	type SectionId = 'velkommen' | 'praktisk' | 'program' | 'gjester' | 'gaver' | 'kaker';
@@ -39,19 +36,6 @@
 	let showConnectionStatus = $state(true);
 	let newGift = $state('');
 	let newCake = $state('');
-
-	let checkModalOpen = $state(false);
-	let checkModalKind = $state<ListKind>('gift');
-	let checkModalItemId = $state('');
-	let checkModalItemName = $state('');
-	let checkModalMeta = $state('');
-	let checkModalError = $state('');
-
-	let uncheckModalOpen = $state(false);
-	let uncheckModalKind = $state<ListKind>('gift');
-	let uncheckModalItemId = $state('');
-	let uncheckModalItemName = $state('');
-	let uncheckModalActor = $state('');
 
 	let ws: ReturnType<typeof createWebSocket> | null = null;
 	let hideConnectionStatusTimer: ReturnType<typeof setTimeout> | null = null;
@@ -183,126 +167,28 @@
 		}
 	}
 
-	function openCheckModal(kind: ListKind, itemId: string, itemName: string, initialValue = '') {
-		checkModalKind = kind;
-		checkModalItemId = itemId;
-		checkModalItemName = itemName;
-		checkModalMeta = initialValue;
-		checkModalError = '';
-		checkModalOpen = true;
-	}
-
-	function closeCheckModal() {
-		checkModalOpen = false;
-		checkModalError = '';
-	}
-
-	function openUncheckModal(kind: ListKind, itemId: string, itemName: string, actor: string) {
-		uncheckModalKind = kind;
-		uncheckModalItemId = itemId;
-		uncheckModalItemName = itemName;
-		uncheckModalActor = actor;
-		uncheckModalOpen = true;
-	}
-
-	function closeUncheckModal() {
-		uncheckModalOpen = false;
-	}
-
-	function checkModalLabel(kind: ListKind): string {
-		if (kind === 'gift') return 'Navn på gavegiver';
-		if (kind === 'cake') return 'Navn på baker';
-		return 'Allergier (kun synlig for arrangørene)';
-	}
-
-	function checkModalPlaceholder(kind: ListKind): string {
-		if (kind === 'gift') return 'Hvem gir denne gaven?';
-		if (kind === 'cake') return 'Hvem baker denne kaken?';
-		return 'F.eks. nøtter, gluten, laktose';
-	}
-
-	function checkModalHelpText(kind: ListKind): string {
-		if (kind === 'guest') {
-			return 'Denne informasjonen brukes kun til planlegging av mat og vises ikke i gjestelisten.';
-		}
-		return 'Dette navnet brukes for å vise hvem som har reservert punktet.';
-	}
-
-	async function applyCheckModal() {
-		const value = checkModalMeta.trim();
-		if (!value) {
-			checkModalError = `${checkModalLabel(checkModalKind)} må fylles ut.`;
-			return;
-		}
-
-		const list = listName(checkModalKind);
-		const field = checkModalKind === 'gift' ? 'gifterName' : checkModalKind === 'cake' ? 'bakerName' : 'allergies';
-		const patch: Record<string, unknown> = {
-			[field]: value
-		};
-		if (checkModalKind === 'gift' || checkModalKind === 'cake') {
-			patch.claimed = true;
-		}
-		if (checkModalKind === 'guest') {
-			patch.attendance = Attendance.Attending;
-		}
-
-		const update = await callListEndpoint(list, 'update', {
-			id: checkModalItemId,
-			patch
+	async function applyModalUpdate(updatedElement: Gift | Cake, listName: ListName) {
+		const update = await callListEndpoint(listName, 'update', {
+			id: updatedElement.id,
+			updatedElement
 		});
 		if (update) applyDelta(update);
-		closeCheckModal();
-	}
-
-	async function confirmUncheck() {
-		const list = listName(uncheckModalKind);
-		const patch =
-			uncheckModalKind === 'guest'
-				? { attendance: Attendance.NotAttending }
-				: { claimed: false };
-		const update = await callListEndpoint(list, 'update', {
-			id: uncheckModalItemId,
-			patch
-		});
-		if (update) applyDelta(update);
-		closeUncheckModal();
 	}
 
 	async function addGift() {
-		const name = newGift.trim();
+		const name = captalize(newGift.trim());
 		if (!name) return;
 		const update = await callListEndpoint('gifts', 'add', { name });
 		if (update) applyDelta(update);
 		newGift = '';
 	}
 
-	function toggleGift(id: string) {
-		const item = gifts.find((g) => g.id === id);
-		if (!item) return;
-		if (item.claimed) {
-			openUncheckModal('gift', item.id, item.name, item.gifterName || 'Ukjent gavegiver');
-			return;
-		}
-		openCheckModal('gift', item.id, item.name, item.gifterName || '');
-	}
-
 	async function addCake() {
-		const name = newCake.trim();
+		const name = captalize(newCake.trim());
 		if (!name) return;
 		const update = await callListEndpoint('cakes', 'add', { name });
 		if (update) applyDelta(update);
 		newCake = '';
-	}
-
-	function toggleCake(id: string) {
-		const item = cakes.find((c) => c.id === id);
-		if (!item) return;
-		if (item.claimed) {
-			openUncheckModal('cake', item.id, item.name, item.bakerName || 'Ukjent baker');
-			return;
-		}
-		openCheckModal('cake', item.id, item.name, item.bakerName || '');
 	}
 
 	onMount(() => {
@@ -400,7 +286,7 @@
 			newGift={newGift}
 			onNewGiftChange={(value) => (newGift = value)}
 			onAddGift={addGift}
-			onToggleGift={toggleGift}
+			applyModalUpdate={(gift) => applyModalUpdate(gift, 'gifts')}
 		/>
 		<CakeSection
 			{cakes}
@@ -408,7 +294,7 @@
 			newCake={newCake}
 			onNewCakeChange={(value) => (newCake = value)}
 			onAddCake={addCake}
-			onToggleCake={toggleCake}
+			applyModalUpdate={(cake) => applyModalUpdate(cake, 'cakes')}
 		/>
 		<GuestSection
 			{guests}
@@ -417,42 +303,7 @@
 	</main>
 </div>
 
-{#if checkModalOpen}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-		<Card.Root class="w-full max-w-md">
-			<Card.Header>
-				<Card.Title>Før du huker av “{checkModalItemName}”</Card.Title>
-				<Card.Description>{checkModalHelpText(checkModalKind)}</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				<label class="text-sm font-medium" for="check-meta">{checkModalLabel(checkModalKind)}</label>
-				{#if checkModalKind === 'guest'}
-					<Textarea
-						id="check-meta"
-						value={checkModalMeta}
-						oninput={(e: Event) => (checkModalMeta = (e.currentTarget as HTMLTextAreaElement).value)}
-						placeholder={checkModalPlaceholder(checkModalKind)}
-					/>
-				{:else}
-					<Input
-						id="check-meta"
-						type="text"
-						value={checkModalMeta}
-						oninput={(e: Event) => (checkModalMeta = (e.currentTarget as HTMLInputElement).value)}
-						placeholder={checkModalPlaceholder(checkModalKind)}
-					/>
-				{/if}
-				{#if checkModalError}
-					<p class="text-sm text-red-600">{checkModalError}</p>
-				{/if}
-				<div class="flex justify-end gap-2 pt-2">
-					<Button variant="outline" onclick={closeCheckModal}>Avbryt</Button>
-					<Button onclick={applyCheckModal}>Lagre og huk av</Button>
-				</div>
-			</Card.Content>
-		</Card.Root>
-	</div>
-{/if}
+
 
 <style>
 	.main-page {
@@ -479,26 +330,3 @@
 		min-height: calc(100svh - var(--tabs-height, 72px) - 8px);
 	}
 </style>
-
-{#if uncheckModalOpen}
-	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/35 p-4">
-		<Card.Root class="w-full max-w-md">
-			<Card.Header>
-				<Card.Title>Fjern avhuking på “{uncheckModalItemName}”?</Card.Title>
-				{#if uncheckModalKind === 'guest'}
-					<Card.Description>
-						Allergiopplysninger for gjester er private. Bekreft bare hvis du vil endre din egen registrering.
-					</Card.Description>
-				{:else}
-					<Card.Description>Registrert av: {uncheckModalActor}.</Card.Description>
-				{/if}
-			</Card.Header>
-			<Card.Content>
-				<div class="flex justify-end gap-2">
-					<Button variant="outline" onclick={closeUncheckModal}>Avbryt</Button>
-					<Button onclick={confirmUncheck}>Ja, fjern</Button>
-				</div>
-			</Card.Content>
-		</Card.Root>
-	</div>
-{/if}

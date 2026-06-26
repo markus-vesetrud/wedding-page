@@ -2,7 +2,7 @@
 	import type { Guest } from '$shared/types';
 	import { Attendance } from '$shared/types';
 	import SectionShell from '$lib/components/sections/section-shell.svelte';
-	import AnimatedList from '$lib/components/sections/animated-list.svelte';
+	import AnimatedList from '$lib/components/animated-list.svelte';
 
 	let {
 		guests,
@@ -22,7 +22,7 @@
 				{@const isAttending = guest.attendance === Attendance.Attending}
 				<div class="flex items-center justify-between">
 					<span class={`inline-flex h-4 min-w-4 items-center justify-center rounded border px-1 text-[10px] ${isAttending ? 'border-primary text-primary' : 'text-muted-foreground border-muted-foreground/40'}`}>
-						{isAttending ? '✓' : '–'}
+						{isAttending ? '✓' : '-'}
 					</span>
 					<span class={isAttending ? 'text-muted-foreground line-through' : ''}>{guest.name}</span>
 					<span class="text-muted-foreground text-xs">{guest.attendance}</span>
