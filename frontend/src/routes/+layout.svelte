@@ -5,7 +5,7 @@
 </script>
 
 <svelte:head>
-	<title>Bryllupsside</title>
+	<title>Bryllup</title>
 	<meta
 		name="description"
 		content="Praktisk informasjon, gjesteliste, gaveliste og kakeoversikt for bryllupet"

@@ -306,12 +306,24 @@
 
 
 <style>
+
 	.main-page {
 		width: 100%;
 		height: 100svh;
 		overflow-y: auto;
 		scroll-behavior: smooth;
 		scroll-snap-type: y proximity;
+
+		/* Override the background gradient to make it change as you scroll */
+		background:
+			linear-gradient(
+				120deg,
+				hsla(130, 100%, 95%, 1) 0%,
+				hsla(236, 100%, 97%, 1) 45%,
+				hsla(351, 100%, 93%, 1) 100%
+			);
+
+		background-attachment: local;
 	}
 
 	.main-page :global(section[id]) {
