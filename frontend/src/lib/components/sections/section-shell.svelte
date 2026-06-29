@@ -4,7 +4,7 @@
 	let {
 		id,
 		title,
-		ingress = '',
+		ingress,
 		headingClass = 'text-2xl font-semibold tracking-tight',
 		includeMarginBottom = true,
 		children
