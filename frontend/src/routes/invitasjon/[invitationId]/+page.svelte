@@ -5,6 +5,7 @@
   import WelcomeSection from '$lib/components/sections/welcome-section.svelte';
   import * as Card from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
+	import Gift from '$lib/components/ui/icon/gift.svelte';
 
   type Member = {
     id: string;
@@ -18,13 +19,36 @@
   const invitationId = $derived(decodeURIComponent(page.params.invitationId ?? ''));
   const mainMenuHref = $derived(`/?invitationId=${encodeURIComponent(invitationId)}`);
   const weddingDateLabel = 'Lørdag 31. juli 2027';
+  const answerDeadlineLabel = '1. februar 2027';
 
   let loading = $state(true);
   let notFound = $state(false);
   let invitation = $state<Invitation | null>(null);
   let members = $state<Member[]>([]);
   let error = $state('');
+  let saving = $state(false);
+  let savedRecently = $state(false);
+  let savedRecentlyTimer: ReturnType<typeof setTimeout> | null = null;
   const notesAutosaveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+  const attendanceOptions: Attendance[] = [
+    Attendance.NotAnswered,
+    Attendance.NotAttending,
+    Attendance.Attending
+  ];
+
+  function pillClasses(value: Attendance, active: boolean): string {
+    if (!active) {
+      return 'border-input bg-background text-foreground hover:bg-muted';
+    }
+    if (value === Attendance.Attending) {
+      return 'border-emerald-600 bg-emerald-50 text-emerald-800';
+    }
+    if (value === Attendance.NotAttending) {
+      return 'border-red-600 bg-red-50 text-red-800';
+    }
+    return 'border-blue-600 bg-blue-50 text-blue-800';
+  }
 
   function upsertMember(memberId: string, updater: (member: Member) => Member) {
     members = members.map((member) => (member.id === memberId ? updater(member) : member));
@@ -146,6 +170,34 @@
     }
   }
 
+  const minSavingIndicatorMs = 300;
+
+  async function saveAll() {
+    error = '';
+    saving = true;
+    const startedAt = Date.now();
+
+    // Clears autosave timers (new ones are scheduled on subsequent changes)
+    for (const memberId of [...notesAutosaveTimers.keys()]) {
+      clearNotesAutosave(memberId);
+    }
+    // Save all notes at immidiatly
+    await Promise.all(members.map((member) => submitNotes(member.id, member.notes)));
+    // Not saving attendance, as any changes there are already saved
+
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs < minSavingIndicatorMs) {
+      await new Promise((resolve) => setTimeout(resolve, minSavingIndicatorMs - elapsedMs));
+    }
+
+    saving = false;
+    savedRecently = true;
+    if (savedRecentlyTimer) clearTimeout(savedRecentlyTimer);
+    savedRecentlyTimer = setTimeout(() => {
+      savedRecently = false;
+    }, 3000);
+  }
+
   onMount(() => {
     loadInvitation();
   });
@@ -155,6 +207,7 @@
       clearTimeout(timer);
     }
     notesAutosaveTimers.clear();
+    if (savedRecentlyTimer) clearTimeout(savedRecentlyTimer);
   });
 </script>
 
@@ -169,7 +222,7 @@
     <Card.Root>
       <Card.Header>
         <Card.Title>Invitasjon ikke funnet</Card.Title>
-        <Card.Description>Denne invitasjonslenken finnes ikke.</Card.Description>
+        <Card.Description>Denne invitasjonslenken finnes desverre ikke, klag til Markus for å få svar om du tror det er en feil :D <br/> Du kan uansett gå til hovedsiden under</Card.Description>
       </Card.Header>
     </Card.Root>
   {:else if invitation}
@@ -177,7 +230,7 @@
       <Card.Header>
         <Card.Title class="text-3xl">Velkommen, {invitation.name}</Card.Title>
         <Card.Description>
-          Dere er invitert til bryllupet vårt {weddingDateLabel}. Under finner dere alle i invitasjonen og kan svare på om dere kommer.
+          Dere er hjertelig invitert til bryllupet vårt {weddingDateLabel}. Gi oss beskjed under om dere kommer - gjerne innen <strong>{answerDeadlineLabel}</strong>.
         </Card.Description>
       </Card.Header>
     </Card.Root>
@@ -185,69 +238,62 @@
     <Card.Root>
       <Card.Header>
         <Card.Title>Svar på invitasjonen</Card.Title>
+        <Card.Description>Velg for hver person, og noter eventuelle allergier eller ønsker.</Card.Description>
       </Card.Header>
       <Card.Content>
         {#if members.length === 0}
           <p class="text-sm text-muted-foreground">Det er ingen gjester koblet til denne invitasjonen ennå.</p>
         {:else}
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-[640px] border-collapse text-sm">
-              <thead>
-                <tr class="border-b text-left">
-                  <th class="px-3 py-2 font-medium">Navn</th>
-                  <th class="px-3 py-2 font-medium">Kommer</th>
-                  <th class="px-3 py-2 font-medium">Kommer ikke</th>
-                  <th class="px-3 py-2 font-medium">Allergier / notater</th>
-                </tr>
-              </thead>
-              <tbody>
-                {#each members as member (member.id)}
-                  <tr class="border-b align-top">
-                    <td class="px-3 py-3 font-medium">{member.name}</td>
-                    <td class="px-3 py-3">
-                      <label class="inline-flex items-center justify-center">
-                        <input
-                          type="radio"
-                          name={`attendance-${member.id}`}
-                          checked={member.attendance === Attendance.Attending}
-                          onchange={() => setAttendance(member.id, Attendance.Attending)}
-                          class="h-4 w-4 rounded-full border"
-                        />
-                      </label>
-                    </td>
-                    <td class="px-3 py-3">
-                      <label class="inline-flex items-center justify-center">
-                        <input
-                          type="radio"
-                          name={`attendance-${member.id}`}
-                          checked={member.attendance === Attendance.NotAttending}
-                          onchange={() => setAttendance(member.id, Attendance.NotAttending)}
-                          class="h-4 w-4 rounded-full border"
-                        />
-                      </label>
-                    </td>
-                    <td class="px-3 py-3">
-                      <Input
-                        type="text"
-                        value={member.notes}
-                        oninput={(e: Event) => {
-                          const value = (e.currentTarget as HTMLInputElement).value;
-                          updateNotes(member.id, value);
-                          scheduleNotesAutosave(member.id, value);
-                        }}
-                        onblur={(e: Event) => {
-                          const value = (e.currentTarget as HTMLInputElement).value;
-                          clearNotesAutosave(member.id);
-                          submitNotes(member.id, value);
-                        }}
-                        placeholder="Allergier eller andre notater"
-                      />
-                    </td>
-                  </tr>
-                {/each}
-              </tbody>
-            </table>
+          <div class="divide-y">
+            {#each members as member (member.id)}
+              <div class="py-5 first:pt-0 last:pb-0">
+                <p class="mb-3 text-lg font-semibold">{member.name}</p>
+
+                <div class="mb-3 flex flex-wrap gap-2">
+                  {#each attendanceOptions as option (option)}
+                    <button
+                      type="button"
+                      onclick={() => setAttendance(member.id, option)}
+                      class={`min-h-11 flex-1 basis-28 rounded-lg border-2 px-3 py-2 text-sm font-semibold transition-colors ${pillClasses(option, member.attendance === option)}`}
+                    >
+                      {option}
+                    </button>
+                  {/each}
+                </div>
+
+                <Input
+                  type="text"
+                  value={member.notes}
+                  oninput={(e: Event) => {
+                    const value = (e.currentTarget as HTMLInputElement).value;
+                    updateNotes(member.id, value);
+                    scheduleNotesAutosave(member.id, value);
+                  }}
+                  onblur={(e: Event) => {
+                    const value = (e.currentTarget as HTMLInputElement).value;
+                    clearNotesAutosave(member.id);
+                    submitNotes(member.id, value);
+                  }}
+                  placeholder="Allergier eller andre notater (valgfritt)"
+                />
+              </div>
+            {/each}
           </div>
+
+          <button
+            type="button"
+            onclick={saveAll}
+            disabled={saving}
+            class="mt-5 min-h-12 w-full rounded-xl bg-foreground text-base font-bold text-background transition-opacity disabled:opacity-60"
+          >
+            {saving ? 'Lagrer ...' : 'Lagre svaret vårt'}
+          </button>
+
+          {#if savedRecently}
+            <p class="mt-3 text-center text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+              ✓ Takk! Svaret deres er lagret.
+            </p>
+          {/if}
         {/if}
 
         {#if error}
@@ -256,13 +302,18 @@
       </Card.Content>
     </Card.Root>
 
-    <div class="flex justify-center">
-      <a
-        href={mainMenuHref}
-        class="inline-flex items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm font-medium text-foreground hover:bg-muted"
-      >
-        Til hovedmeny
-      </a>
-    </div>
-  {/if}
+    {/if}
+    <a
+      href={mainMenuHref}
+      class="flex items-center gap-4 rounded-xl bg-gradient-to-br from-rose-800 to-rose-950 p-5 text-white shadow-lg shadow-rose-950/20 transition-transform hover:scale-[1.01]"
+    >
+      <span class="flex h-8 w-8 shrink-0 items-center justify-center">
+        <Gift/>
+      </span>
+      <span class="flex-1">
+        <span class="block text-lg font-bold leading-tight">Program, kart og gaver</span>
+        <span class="block text-sm font-medium opacity-90">Alt det praktiske for dagen</span>
+      </span>
+      <span class="shrink-0 text-2xl font-bold">→</span>
+    </a>
 </div>

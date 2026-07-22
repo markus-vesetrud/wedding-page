@@ -7,7 +7,7 @@ export interface Item {
 export enum Attendance {
   Attending = "Kommer",
   NotAttending = "Kommer ikke",
-  Unsure = "Usikker"
+  NotAnswered = "Ikke svart"
 }
 export interface Guest extends Item {
   attendance: Attendance;

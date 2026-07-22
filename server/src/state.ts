@@ -102,7 +102,7 @@ function parseBaseItem(raw: unknown, context: string): Item {
 }
 
 function isAttendance(value: unknown): value is Attendance {
-  return value === 'Kommer' || value === 'Kommer ikke' || value === 'Usikker';
+  return value === 'Kommer' || value === 'Kommer ikke' || value === 'Ikke svart';
 }
 
 function parseGift(raw: unknown, context: string): Gift {
@@ -159,7 +159,7 @@ function parseGuest(raw: unknown, context: string): Guest {
   const base = parseBaseItem(raw, context);
   const attendanceRaw = raw.attendance;
   if (!isAttendance(attendanceRaw)) {
-    throw new HttpError(`${context}.attendance must be one of Kommer, Kommer ikke, Usikker`, 400);
+    throw new HttpError(`${context}.attendance must be one of Kommer, Kommer ikke, Ikke svart`, 400);
   }
   return {
     ...base,
@@ -280,7 +280,7 @@ export function parseItemUpdateBody(
       throw new HttpError('body.patch.name must be a non-empty string', 400);
     }
     if (patch.attendance !== undefined && !isAttendance(patch.attendance)) {
-      throw new HttpError('body.patch.attendance must be one of Kommer, Kommer ikke, Usikker', 400);
+      throw new HttpError('body.patch.attendance must be one of Kommer, Kommer ikke, Ikke svart', 400);
     }
     if (patch.allergies !== undefined && typeof patch.allergies !== 'string') {
       throw new HttpError('body.patch.allergies must be a string', 400);
@@ -426,7 +426,7 @@ export function addItem(state: AppState, list: ListName, name: string): WsDeltaU
 
   let item: ListEntity;
   if (list === 'gifts') item = { ...base, claimed: false };
-  else if (list === 'guests') item = { ...base, attendance: Attendance.Unsure };
+  else if (list === 'guests') item = { ...base, attendance: Attendance.NotAnswered };
   else item = { ...base, claimed: false, servings: 0 };
 
   state[list].push(item as never);
@@ -507,7 +507,7 @@ export function migrateLegacyRecord(raw: unknown, list: 'gifts' | 'cakes' | 'gue
 
   const output = { ...raw };
   if (!('attendance' in output) && 'checked' in output) {
-    output.attendance = output.checked ? 'Kommer' : 'Usikker';
+    output.attendance = output.checked ? 'Kommer' : 'Ikke svart';
   }
   delete output.checked;
   return output;
