@@ -11,11 +11,15 @@
 	import CakeSection from '$lib/components/sections/cake-section.svelte';
 	import { captalize } from '$lib/utils/capitalize';
 
-	type ListKind = 'gift' | 'guest' | 'cake';
 	type SectionId = 'velkommen' | 'praktisk' | 'program' | 'gjester' | 'gaver' | 'kaker';
 
 	const TAB_STICKY_TOP_PX = 0;
 	const TAB_SCROLL_MARGIN_GAP_PX = 8;
+	const TAB_MIN_WIDTH_PX = 119;
+	const TAB_MAX_WIDTH_PX = 170;
+	const TAB_GAP_PX = 8;
+	// Horizontal padding (p-2) + border of the bordered box wrapping the tab list.
+	const TAB_BAR_CHROME_PX = 18;
 
 	const sectionTabs: Array<{ id: SectionId; label: string }> = [
 		{ id: 'velkommen', label: 'Velkommen' },
@@ -43,11 +47,36 @@
 	let tabsNavElement: HTMLElement | null = null;
 	let tabResizeObserver: ResizeObserver | null = null;
 	let tabBarHeightPx = $state(72);
+	let tabGridColumns = $state(2);
 	let scrollRafId: number | null = null;
 
 	function syncTabMetrics() {
 		const measuredHeight = tabsNavElement ? Math.ceil(tabsNavElement.getBoundingClientRect().height) : 0;
 		if (measuredHeight > 0) tabBarHeightPx = measuredHeight;
+	}
+
+	function computeTabColumns(containerWidthPx: number): number {
+		const itemCount = sectionTabs.length;
+		if (itemCount <= 1) return 1;
+
+		const widthPerColumn = (columns: number) =>
+			(containerWidthPx - TAB_GAP_PX * (columns - 1)) / columns;
+
+		// Prefer 1 row (all tabs in a single row), then 2 rows (items/2 rounded up
+		// columns per row), then 3 rows, picking the first where tabs stay above the
+		// min width. 3 rows is the last resort regardless of width.
+		for (const rows of [1, 2, 3]) {
+			const columns = Math.ceil(itemCount / rows);
+			if (widthPerColumn(columns) >= TAB_MIN_WIDTH_PX) return columns;
+		}
+		return Math.ceil(itemCount / 3);
+	}
+
+	function syncTabColumns() {
+		if (!tabsNavElement) return;
+		const availableWidth = tabsNavElement.getBoundingClientRect().width - TAB_BAR_CHROME_PX;
+		if (availableWidth <= 0) return;
+		tabGridColumns = computeTabColumns(availableWidth);
 	}
 
 	function stickyOffset() {
@@ -93,13 +122,6 @@
 		if (top === null) return;
 
 		scrollContainerElement?.scrollTo({ top, behavior: 'smooth' });
-	}
-
-	function listName(kind: ListKind): ListName {
-		if (kind === 'gift') return 'gifts';
-		if (kind === 'guest') return 'guests';
-		if (kind === 'cake') return 'cakes';
-		throw new Error('Unknown list kind: ' + kind);
 	}
 
 	function isSameEntity<T extends Item>(current: T, incoming: T): boolean {
@@ -223,11 +245,13 @@
 		if (tabsNavElement) {
 			tabResizeObserver = new ResizeObserver(() => {
 				syncTabMetrics();
+				syncTabColumns();
 			});
 			tabResizeObserver.observe(tabsNavElement);
 		}
 
 		syncTabMetrics();
+		syncTabColumns();
 		scrollContainerElement?.addEventListener('resize', onResize);
 		scrollContainerElement?.addEventListener('scroll', onScroll, { passive: true });
 		queueActiveSectionUpdate();
@@ -257,25 +281,31 @@
 	>
 		<WelcomeSection {invitationId} isMainPage={true} />
 
-		<nav bind:this={tabsNavElement} class="sticky top-2 z-30 mb-4 rounded-xl border bg-background/90 p-2 backdrop-blur">
-		<ul class="grid grid-cols-2 gap-2 min-[440px]:grid-cols-3 min-[850px]:grid-cols-6">
-			{#each sectionTabs as tab}
-				<li>
-					<button
-						type="button"
-						onclick={() => scrollToSection(tab.id)}
-						class={`w-full rounded-md px-2 py-2 text-sm font-medium transition-colors ${activeSection === tab.id ? 'bg-primary text-primary-foreground' : 'hover:bg-muted text-muted-foreground'}`}
-					>
-						{tab.label}
-					</button>
-				</li>
-			{/each}
-		</ul>
-		{#if !connected || showConnectionStatus}
-			<p class="text-muted-foreground mt-2 text-center text-xs">
-				{connected ? 'Tilkoblet' : 'Kobler til ...'}
-			</p>
-		{/if}
+		<nav bind:this={tabsNavElement} class="sticky top-2 z-30 mb-4 rounded-xl border bg-background/80 p-2 backdrop-blur">
+			<ul
+				class="grid justify-center gap-2"
+				style={`grid-template-columns: repeat(${tabGridColumns}, minmax(${TAB_MIN_WIDTH_PX}px, ${TAB_MAX_WIDTH_PX}px));`}
+			>
+				{#each sectionTabs as tab}
+					<li>
+						<button
+							type="button"
+							onclick={() => scrollToSection(tab.id)}
+							class={`flex w-full flex-col items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium transition-colors hover:bg-muted ${activeSection === tab.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+						>
+							<span>{tab.label}</span>
+							<span
+								class={`h-[3px] w-6 rounded-full bg-foreground transition-opacity ${activeSection === tab.id ? 'opacity-100' : 'opacity-0'}`}
+							></span>
+						</button>
+					</li>
+				{/each}
+			</ul>
+			{#if !connected || showConnectionStatus}
+				<p class="text-muted-foreground mt-2 text-center text-xs">
+					{connected ? 'Tilkoblet' : 'Kobler til ...'}
+				</p>
+			{/if}
 		</nav>
 
 		<PracticalSection />
@@ -312,7 +342,6 @@
 		height: 100svh;
 		overflow-y: auto;
 		scroll-behavior: smooth;
-		scroll-snap-type: y proximity;
 
 		/* Override the background gradient to make it change as you scroll */
 		background:
