@@ -1,21 +1,21 @@
 <script lang="ts">
     import { onMount } from 'svelte';
+    import SurfaceCard from './surface-card.svelte';
     const weddingDate = new Date('2027-07-31T14:00:00+02:00');
 
-    let days = 0;
-    let hours = 0;
-    let minutes = 0;
-    let seconds = 0;
+    let countDownSections: Array<{ value: number; label: string }>;
 
     function updateCountdown() {
         const diff = weddingDate.getTime() - Date.now();
 
         if (diff <= 0) return;
 
-        days = Math.floor(diff / 1000 / 60 / 60 / 24);
-        hours = Math.floor((diff / 1000 / 60 / 60) % 24);
-        minutes = Math.floor((diff / 1000 / 60) % 60);
-        seconds = Math.floor((diff / 1000) % 60);
+        countDownSections = [
+            { value: Math.floor(diff / 1000 / 60 / 60 / 24), label: 'dager' },
+            { value: Math.floor((diff / 1000 / 60 / 60) % 24), label: 'timer' },
+            { value: Math.floor((diff / 1000 / 60) % 60), label: 'minutter' },
+            // { value: Math.floor((diff / 1000) % 60), label: 'sekunder' },
+        ]; 
     }
 
     onMount(() => {
@@ -29,41 +29,15 @@
 
 
 <div class="flex justify-center gap-2">
-    <div class="flex flex-col items-center justify-center rounded-md border-1 border-black w-24 h-22">
-        <div class="text-3xl font-semibold leading-none px-">
-            {days}
-        </div>
-
-        <div class="mt-2 text-sm text-center tracking-wide">
-            Dager
-        </div>
-    </div>
-    <div class="flex flex-col items-center justify-center rounded-md border-1 border-black w-24 h-22">
-        <div class="text-3xl font-semibold leading-none px-">
-            {hours}
-        </div>
-
-        <div class="mt-2 text-sm text-center tracking-wide">
-            Timer
-        </div>
-    </div>
-    <div class="flex flex-col items-center justify-center rounded-md border-1 border-black w-24 h-22">
-        <div class="text-3xl font-semibold leading-none px-">
-            {minutes}
-        </div>
-
-        <div class="mt-2 text-sm text-center tracking-wide">
-            Minutter
-        </div>
-    </div>
-    <div class="flex flex-col items-center justify-center rounded-md border-1 border-black w-24 h-22">
-        <div class="text-3xl font-semibold leading-none px-">
-            {seconds}
-        </div>
-
-        <div class="mt-2 text-sm text-center tracking-wide">
-            Sekunder
-        </div>
-    </div>
+    {#each countDownSections as count}
+        <SurfaceCard class="flex w-24 flex-col items-center justify-center p-4">
+            <div class="text-3xl font-extrabold leading-none tracking-tight">
+                {count.value}
+            </div>
+            <div class="text-muted-foreground mt-2 text-xs font-semibold tracking-wide">
+                {count.label}
+            </div>
+        </SurfaceCard>
+    {/each}
 </div>
 

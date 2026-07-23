@@ -1,13 +1,14 @@
 <script lang="ts">
 	import { cn } from '$lib/utils';
+	import SurfaceCard from '$lib/components/surface-card.svelte';
 
 	let { class: className = '', children, ...restProps } = $props();
 </script>
 
-<div
+<SurfaceCard
 	data-slot="card"
-	class={cn('bg-card text-card-foreground flex flex-col gap-5 rounded-2xl border p-6 shadow-sm', className)}
+	class={cn('text-card-foreground flex flex-col gap-5 p-6', className)}
 	{...restProps}
 >
 	{@render children?.()}
-</div>
+</SurfaceCard>

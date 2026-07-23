@@ -3,34 +3,38 @@
 	import { page } from '$app/state';
 	import { createWebSocket } from '$lib/websocket';
 	import { type AppState, type Cake, type WsDeltaType, type Gift, type Guest, type Item, type ListName, type WsDeltaUpdate } from '$shared/types';
-	import WelcomeSection from '$lib/components/sections/welcome-section.svelte';
-	import PracticalSection from '$lib/components/sections/practical-section.svelte';
+	import WelcomeHero from '$lib/components/sections/welcome-hero.svelte';
+	import WelcomeDetails from '$lib/components/sections/welcome-details.svelte';
+	import SurfaceCard from '$lib/components/surface-card.svelte';
 	import ProgramSection from '$lib/components/sections/program-section.svelte';
 	import GuestSection from '$lib/components/sections/guest-section.svelte';
 	import GiftSection from '$lib/components/sections/gift-section.svelte';
 	import CakeSection from '$lib/components/sections/cake-section.svelte';
 	import { captalize } from '$lib/utils/capitalize';
+	import Back from '$lib/components/ui/icon/back.svelte';
 
-	type SectionId = 'velkommen' | 'praktisk' | 'program' | 'gjester' | 'gaver' | 'kaker';
+	type SectionId = 'velkommen' | 'program' | 'gjester' | 'gaver' | 'kaker';
 
 	const TAB_STICKY_TOP_PX = 0;
 	const TAB_SCROLL_MARGIN_GAP_PX = 8;
-	const TAB_MIN_WIDTH_PX = 119;
+	const TAB_MIN_WIDTH_PX = 120;
 	const TAB_MAX_WIDTH_PX = 170;
 	const TAB_GAP_PX = 8;
 	// Horizontal padding (p-2) + border of the bordered box wrapping the tab list.
-	const TAB_BAR_CHROME_PX = 18;
+	const TAB_BAR_CHROME_PX = 26;
 
 	const sectionTabs: Array<{ id: SectionId; label: string }> = [
 		{ id: 'velkommen', label: 'Velkommen' },
-		{ id: 'praktisk', label: 'Praktisk' },
 		{ id: 'program', label: 'Program' },
 		{ id: 'gaver', label: 'Gaver' },
 		{ id: 'kaker', label: 'Kaker' },
-		{ id: 'gjester', label: 'Gjesteliste' }
+		// { id: 'gjester', label: 'Gjesteliste' }
 	];
 
 	const invitationId = $derived((page.url.searchParams.get('invitationId') ?? '').trim());
+	const backToInvitationHref = $derived(
+		invitationId ? `/invitasjon/${encodeURIComponent(invitationId)}` : ''
+	);
 
 	let gifts = $state<Gift[]>([]);
 	let guests = $state<Guest[]>([]);
@@ -47,7 +51,7 @@
 	let tabsNavElement: HTMLElement | null = null;
 	let tabResizeObserver: ResizeObserver | null = null;
 	let tabBarHeightPx = $state(72);
-	let tabGridColumns = $state(2);
+	let tabItemWidthPx = $state(TAB_MIN_WIDTH_PX);
 	let scrollRafId: number | null = null;
 
 	function syncTabMetrics() {
@@ -56,7 +60,7 @@
 	}
 
 	function computeTabColumns(containerWidthPx: number): number {
-		const itemCount = sectionTabs.length;
+		const itemCount = sectionTabs.length + (invitationId ? 1 : 0);
 		if (itemCount <= 1) return 1;
 
 		const widthPerColumn = (columns: number) =>
@@ -76,7 +80,9 @@
 		if (!tabsNavElement) return;
 		const availableWidth = tabsNavElement.getBoundingClientRect().width - TAB_BAR_CHROME_PX;
 		if (availableWidth <= 0) return;
-		tabGridColumns = computeTabColumns(availableWidth);
+		const columns = computeTabColumns(availableWidth);
+		const rawItemWidth = (availableWidth - TAB_GAP_PX * (columns - 1)) / columns;
+		tabItemWidthPx = Math.min(TAB_MAX_WIDTH_PX, Math.max(TAB_MIN_WIDTH_PX, rawItemWidth));
 	}
 
 	function stickyOffset() {
@@ -190,10 +196,8 @@
 	}
 
 	async function applyModalUpdate(updatedElement: Gift | Cake, listName: ListName) {
-		const update = await callListEndpoint(listName, 'update', {
-			id: updatedElement.id,
-			updatedElement
-		});
+		const { id, updatedAt, ...patch } = updatedElement;
+		const update = await callListEndpoint(listName, 'update', { id, patch });
 		if (update) applyDelta(update);
 	}
 
@@ -279,57 +283,72 @@
 		class="mx-auto w-full max-w-2xl px-4 md:px-6"
 		style={`--tabs-height: ${tabBarHeightPx}px; --tabs-sticky-top: ${TAB_STICKY_TOP_PX}px; --tabs-scroll-gap: ${TAB_SCROLL_MARGIN_GAP_PX}px;`}
 	>
-		<WelcomeSection {invitationId} isMainPage={true} />
+		<WelcomeHero showCountDown />
 
-		<nav bind:this={tabsNavElement} class="sticky top-2 z-30 mb-4 rounded-xl border bg-background/80 p-2 backdrop-blur">
-			<ul
-				class="grid justify-center gap-2"
-				style={`grid-template-columns: repeat(${tabGridColumns}, minmax(${TAB_MIN_WIDTH_PX}px, ${TAB_MAX_WIDTH_PX}px));`}
-			>
-				{#each sectionTabs as tab}
-					<li>
-						<button
-							type="button"
-							onclick={() => scrollToSection(tab.id)}
-							class={`flex w-full flex-col items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium transition-colors hover:bg-muted ${activeSection === tab.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-						>
-							<span>{tab.label}</span>
-							<span
-								class={`h-[3px] w-6 rounded-full bg-foreground transition-opacity ${activeSection === tab.id ? 'opacity-100' : 'opacity-0'}`}
-							></span>
-						</button>
-					</li>
-				{/each}
-			</ul>
-			{#if !connected || showConnectionStatus}
-				<p class="text-muted-foreground mt-2 text-center text-xs">
-					{connected ? 'Tilkoblet' : 'Kobler til ...'}
-				</p>
-			{/if}
+		<nav bind:this={tabsNavElement} class="sticky top-2 z-30 my-4">
+			<SurfaceCard class="bg-background/90 p-2 backdrop-blur">
+				<ul class="flex flex-wrap justify-center gap-1.5">
+					{#if invitationId}
+						<li style={`flex: 0 0 ${tabItemWidthPx}px;`}>
+							<a
+								href={backToInvitationHref}
+								class="flex w-full flex-col items-center gap-1.5 rounded-md border-2 ps-1 pe-2 py-1 text-sm font-medium  hover:bg-muted"
+							>
+								<div class="flex flex-1 items-center justify-center gap-1">
+									<span><Back size={20}/></span><span>Invitasjon</span>
+								</div>
+							</a>
+						</li>
+					{/if}
+					{#each sectionTabs as tab}
+						<li style={`flex: 0 0 ${tabItemWidthPx}px;`}>
+							<button
+								type="button"
+								onclick={() => scrollToSection(tab.id)}
+								class={`flex w-full flex-col items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium transition-colors hover:bg-muted ${activeSection === tab.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+							>
+								<span>{tab.label}</span>
+								<span
+									class={`h-[3px] w-6 rounded-full bg-foreground transition-opacity ${activeSection === tab.id ? 'opacity-100' : 'opacity-0'}`}
+								></span>
+							</button>
+						</li>
+					{/each}
+				</ul>
+				{#if !connected || showConnectionStatus}
+					<p class="text-muted-foreground mt-2 text-center text-xs">
+						{connected ? 'Tilkoblet' : 'Kobler til ...'}
+					</p>
+				{/if}
+			</SurfaceCard>
 		</nav>
 
-		<PracticalSection />
-		<ProgramSection />
-		<GiftSection
-			{gifts}
-			isLoading={!connected}
-			newGift={newGift}
-			onNewGiftChange={(value) => (newGift = value)}
-			onAddGift={addGift}
-			applyModalUpdate={(gift) => applyModalUpdate(gift, 'gifts')}
-		/>
-		<CakeSection
-			{cakes}
-			isLoading={!connected}
-			newCake={newCake}
-			onNewCakeChange={(value) => (newCake = value)}
-			onAddCake={addCake}
-			applyModalUpdate={(cake) => applyModalUpdate(cake, 'cakes')}
-		/>
-		<GuestSection
-			{guests}
-			isLoading={!connected}
-		/>
+		<WelcomeDetails />
+
+		<div class="space-y-20 mt-20">
+			<ProgramSection />
+			<GiftSection
+				{gifts}
+				isLoading={!connected}
+				newGift={newGift}
+				onNewGiftChange={(value) => (newGift = value)}
+				onAddGift={addGift}
+				applyModalUpdate={(gift) => applyModalUpdate(gift, 'gifts')}
+			/>
+			<CakeSection
+				{cakes}
+				isLoading={!connected}
+				newCake={newCake}
+				onNewCakeChange={(value) => (newCake = value)}
+				onAddCake={addCake}
+				applyModalUpdate={(cake) => applyModalUpdate(cake, 'cakes')}
+			/>
+			<!-- <GuestSection
+				{guests}
+				isLoading={!connected}
+			/> -->
+		</div>
+
 	</main>
 </div>
 
@@ -367,7 +386,7 @@
 		scroll-margin-top: calc(var(--tabs-height, 72px) + var(--tabs-sticky-top, 8px) + var(--tabs-scroll-gap, 8px));
 	}
 
-	.main-page :global(main > section[id]:last-of-type) {
+	.main-page :global(main > div > section[id]:last-of-type) {
 		min-height: calc(100svh - var(--tabs-height, 72px) - 8px);
 	}
 </style>

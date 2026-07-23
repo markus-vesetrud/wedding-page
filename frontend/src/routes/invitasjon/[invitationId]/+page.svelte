@@ -2,10 +2,11 @@
   import { onDestroy, onMount } from 'svelte';
   import { page } from '$app/state';
   import { Attendance, type Guest, type Invitation, type WsDeltaUpdate } from '$shared/types';
-  import WelcomeSection from '$lib/components/sections/welcome-section.svelte';
+  import WelcomeHero from '$lib/components/sections/welcome-hero.svelte';
   import * as Card from '$lib/components/ui/card';
   import { Input } from '$lib/components/ui/input';
 	import Gift from '$lib/components/ui/icon/gift.svelte';
+	import Forward from '$lib/components/ui/icon/forward.svelte';
 
   type Member = {
     id: string;
@@ -18,7 +19,7 @@
 
   const invitationId = $derived(decodeURIComponent(page.params.invitationId ?? ''));
   const mainMenuHref = $derived(`/?invitationId=${encodeURIComponent(invitationId)}`);
-  const weddingDateLabel = 'Lørdag 31. juli 2027';
+  const weddingDateLabel = 'Lørdag 31. juli 2027, kl. 14:00';
   const answerDeadlineLabel = '1. februar 2027';
 
   let loading = $state(true);
@@ -42,12 +43,12 @@
       return 'border-input bg-background text-foreground hover:bg-muted';
     }
     if (value === Attendance.Attending) {
-      return 'border-emerald-600 bg-emerald-50 text-emerald-800';
+      return 'border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100';
     }
     if (value === Attendance.NotAttending) {
-      return 'border-red-600 bg-red-50 text-red-800';
+      return 'border-red-600 bg-red-50 text-red-800 hover:bg-red-100';
     }
-    return 'border-blue-600 bg-blue-50 text-blue-800';
+    return 'bg-foreground text-background hover:bg-muted-foreground';
   }
 
   function upsertMember(memberId: string, updater: (member: Member) => Member) {
@@ -212,7 +213,7 @@
 </script>
 
 <div class="mx-auto w-full max-w-2xl space-y-6 pb-20 px-4 md:px-6">
-  <WelcomeSection {invitationId} isMainPage={false} />
+  <WelcomeHero showCountDown />
 
   {#if loading}
     <Card.Root>
@@ -284,7 +285,7 @@
             type="button"
             onclick={saveAll}
             disabled={saving}
-            class="mt-5 min-h-12 w-full rounded-xl bg-foreground text-base font-bold text-background transition-opacity disabled:opacity-60"
+            class="mt-5 min-h-12 w-full rounded-xl bg-foreground text-base font-bold text-background transition-opacity disabled:opacity-60 hover:bg-muted-foreground"
           >
             {saving ? 'Lagrer ...' : 'Lagre svaret vårt'}
           </button>
@@ -305,15 +306,16 @@
     {/if}
     <a
       href={mainMenuHref}
-      class="flex items-center gap-4 rounded-xl bg-gradient-to-br from-rose-800 to-rose-950 p-5 text-white shadow-lg shadow-rose-950/20 transition-transform hover:scale-[1.01]"
+      class="flex items-center gap-4 rounded-xl bg-gradient-to-br from-rose-700 to-rose-800 p-5 text-white shadow-lg shadow-rose-950/20 transition-transform hover:scale-[1.01]"
+      style="background:linear-gradient(150deg,#a44371,#833459);"
     >
       <span class="flex h-8 w-8 shrink-0 items-center justify-center">
         <Gift/>
       </span>
       <span class="flex-1">
-        <span class="block text-lg font-bold leading-tight">Program, kart og gaver</span>
+        <span class="block text-lg font-bold leading-tight">Program, sted og gaver</span>
         <span class="block text-sm font-medium opacity-90">Alt det praktiske for dagen</span>
       </span>
-      <span class="shrink-0 text-2xl font-bold">→</span>
+      <span class="shrink-0 text-2xl font-bold"><Forward size={30}/></span>
     </a>
 </div>

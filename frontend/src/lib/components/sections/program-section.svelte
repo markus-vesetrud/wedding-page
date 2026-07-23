@@ -1,38 +1,28 @@
 <script lang="ts">
 	import SectionShell from '$lib/components/sections/section-shell.svelte';
+	import SurfaceCard from '$lib/components/surface-card.svelte';
+
+	const program = [
+		{ time: '14:00', name: 'Vielse' },
+		{ time: '14:45', name: 'Bildetaking' },
+		{ time: '15:15', name: 'Mingling' },
+		{ time: '16:00', name: 'Middag' },
+		{ time: '20:00', name: 'Dans' },
+		{ time: '22:00', name: 'Kaker' }
+	];
 </script>
 
 <SectionShell
 	id="program"
 	title="Program"
-	ingress="Tentativt program for dagen."
+	ingress="Tentativt program, vil nok endres etter hvert. Sjekk igjen når det nærmer seg!"
 >
-	<div class="bg-muted rounded-xl p-4 md:p-6">
-		<ul class="space-y-3 text-sm md:text-base">
-			<li class="flex items-center justify-between gap-4 border-b pb-2">
-				<span class="font-medium">Vielse</span>
-				<span class="text-muted-foreground">14:00</span>
-			</li>
-			<li class="flex items-center justify-between gap-4 border-b pb-2">
-				<span class="font-medium">Bildetaking</span>
-				<span class="text-muted-foreground">14:45</span>
-			</li>
-			<li class="flex items-center justify-between gap-4 border-b pb-2">
-				<span class="font-medium">Mingling</span>
-				<span class="text-muted-foreground">15:15</span>
-			</li>
-			<li class="flex items-center justify-between gap-4 border-b pb-2">
-				<span class="font-medium">Middag</span>
-				<span class="text-muted-foreground">16:00</span>
-			</li>
-			<li class="flex items-center justify-between gap-4 border-b pb-2">
-				<span class="font-medium">Dans</span>
-				<span class="text-muted-foreground">20:00</span>
-			</li>
-			<li class="flex items-center justify-between gap-4">
-				<span class="font-medium">Kaker</span>
-				<span class="text-muted-foreground">22:00</span>
-			</li>
-		</ul>
-	</div>
+	<SurfaceCard class="divide-y overflow-hidden">
+		{#each program as item (item.time + item.name)}
+			<div class="flex items-center gap-4 px-5 py-4">
+				<span class="text-accent-foreground min-w-16 text-lg font-extrabold tracking-tight">{item.time}</span>
+				<span class="text-base font-medium">{item.name}</span>
+			</div>
+		{/each}
+	</SurfaceCard>
 </SectionShell>

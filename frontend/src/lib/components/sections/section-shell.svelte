@@ -6,19 +6,17 @@
 		title,
 		ingress,
 		headingClass = 'text-2xl font-semibold tracking-tight',
-		includeMarginBottom = true,
 		children
 	}: {
 		id: string;
 		title: string;
 		ingress?: string;
 		headingClass?: string;
-		includeMarginBottom?: boolean;
 		children?: Snippet;
 	} = $props();
 </script>
 
-<section {id} class="pt-0 {includeMarginBottom && 'mb-40'}">
+<section {id} class="pt-0">
 	<div class="space-y-3">
 		<h2 class={headingClass}>{title}</h2>
 		{#if ingress}

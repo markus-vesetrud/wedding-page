@@ -5,6 +5,7 @@
 	import { Input } from '$lib/components/ui/input';
     import SectionShell from '$lib/components/sections/section-shell.svelte';
     import AnimatedList from '$lib/components/animated-list.svelte';
+	import ReservableRow from '$lib/components/reservable-row.svelte';
 	import CheckModal from '../check-modal.svelte';
 	import { normalizeName } from '$lib/utils/capitalize';
 
@@ -62,27 +63,18 @@
 
 <SectionShell
     id="kaker"
-    title="Kakeoversikt"
-    ingress="Se hvem som baker hva, hvilke kaker vi fortsatt ønsker oss, og legg gjerne til flere kakeforslag."
+    title="Kaker"
+    ingress="Se hvem som baker hva og hvilke kaker vi fortsatt ønsker oss. Vi tar gjerne imot kakeforslag, de sendes til oss først, og dukker opp i lista om vi er enige"
 >
     <div class="space-y-4">
         <AnimatedList items={sortedCakes} {isLoading} emptyText="Ingen kaker i listen ennå." loadingCount={4}>
             {#snippet children(cake)}
-                <div class="flex items-center justify-between">
-                    <label class="flex items-center gap-3">
-                        <input
-                            type="checkbox"
-                            checked={cake.claimed}
-                            onclick={(e) => {
-								e.preventDefault();
-								toggleCake(cake.id);
-							}}
-                            class="text-primary focus:ring-ring h-4 w-4 rounded border"
-                        />
-                        <span class={cake.claimed ? 'text-muted-foreground line-through' : ''}>{cake.name}</span>
-                    </label>
-                    <span class="text-muted-foreground text-xs">{cake.claimed ? (cake.bakerName ?? 'Baker') : ''}</span>
-                </div>
+                <ReservableRow
+                    claimed={cake.claimed}
+                    label={cake.name}
+                    statusText={cake.claimed ? `Bakes av ${cake.bakerName ?? 'Ukjent'}` : 'Ledig'}
+                    onclick={() => toggleCake(cake.id)}
+                />
             {/snippet}
         </AnimatedList>
         <form
@@ -105,9 +97,9 @@
         {#if modalCake !== undefined}
 			<CheckModal  
 				open={modalState == 'checked'}
-				title='Før du huker av "{modalCake.name}"'
-                saveText='Lagre'
-				description='Skriv inn navnet ditt, som vises hvis andre prøver å fjerne avhukingen.'
+				title='Før du reserverer "{modalCake.name}"'
+                saveText='Reserver'
+				description='Skriv inn navnet ditt - det vises i lista, slik at de andre ser hvilken innsats du legger inn for oss. Takk forresten!'
 				onConfirm={() => {
 					if (!modalCake) {
 						return;
@@ -134,9 +126,10 @@
 
 			<CheckModal  
 				open={modalState == 'unchecked'}
-				title='{modalCake.name} blir bakt av {modalCake.bakerName ?? 'ukjent baker'}'
-                saveText='Jeg er {modalCake.bakerName ?? 'ukjent baker'}'
-				description='Planlegger du å ikke gi bake denne kaka likevel? Trykk "Jeg er {modalCake.bakerName ?? 'ukjent baker'}". Hvis ikke trykk "Avbryt"'
+				title='{modalCake.bakerName ?? 'Ukjent'} baker {modalCake.name} allerede'
+                saveText='Jeg er {modalCake.bakerName ?? 'Ukjent'}'
+				description='Planlegger du å ikke bake denne kaken likevel? Trykk "Jeg er {modalCake.bakerName ?? 'Ukjent'}". Hvis ikke trykk "Avbryt"'
+				modalIsAbortNotConfirm
 				onConfirm={() => {
 					if (!modalCake) {
 						return;

@@ -5,6 +5,7 @@
 	import { Input } from '$lib/components/ui/input';
 	import SectionShell from '$lib/components/sections/section-shell.svelte';
 	import AnimatedList from '$lib/components/animated-list.svelte';
+	import ReservableRow from '$lib/components/reservable-row.svelte';
 	import CheckModal from '../check-modal.svelte';
 	import { normalizeName } from '$lib/utils/capitalize';
 
@@ -64,26 +65,17 @@
 <SectionShell
 	id="gaver"
 	title="Gaveliste"
-	ingress="Denne listen er kun et forslag, og er laget for å unngå duplikate gaver. Hvis du vil gi noe annet enn det som står her, kan du legge til et nytt forslag."
+	ingress="Listen er kun forslag, laget for å unngå at flere gir det samme. Reserver gjerne noe - hvem som har reservert hva holdes skjult for de andre gjestene og brudeparret. Mangler noe? Legg det til nederst. Husk kvittering uansett ;D"
 >
 	<div class="space-y-3">
 		<AnimatedList items={sortedGifts} {isLoading} emptyText="Ingen gaveønsker i listen ennå." loadingCount={4}>
 			{#snippet children(gift)}
-				<div class="flex items-center justify-between">
-					<label class="flex items-center gap-3">
-						<input
-							type="checkbox"
-							checked={gift.claimed}
-							onclick={(e) => {
-								e.preventDefault();
-								toggleGift(gift.id);
-							}}
-							class="text-primary focus:ring-ring h-4 w-4 rounded border"
-						/>
-						<span class={gift.claimed ? 'text-muted-foreground line-through' : ''}>{gift.name}</span>
-					</label>
-					<span class="text-muted-foreground text-xs">{gift.claimed ? 'Reservert' : 'Ledig'}</span>
-				</div>
+				<ReservableRow
+					claimed={gift.claimed}
+					label={gift.name}
+					statusText={gift.claimed ? 'Reservert' : 'Ledig'}
+					onclick={() => toggleGift(gift.id)}
+				/>
 			{/snippet}
 		</AnimatedList>
 		<form
@@ -100,15 +92,15 @@
 				placeholder="Legg til gaveønske"
 				required
 			/>
-			<Button type="submit" class="min-w-28 whitespace-nowrap">Legg til</Button>
+			<Button type="submit" class="min-w-28 whitespace-nowrap bg-foreground">Legg til</Button>
 		</form>
 
 		{#if modalGift !== undefined}
 			<CheckModal  
 				open={modalState == 'checked'}
-				title='Før du huker av "{modalGift.name}"'
+				title='Før du reserverer "{modalGift.name}"'
 				saveText='Lagre'
-				description='Skriv inn navnet ditt, som vises hvis andre prøver å fjerne avhukingen.'
+				description='Skriv inn navnet ditt. Det vises kun hvis noen senere prøver å fjerne reservasjonen - de andre gjestene og brudeparet ser bare at den er reservert.'
 				onConfirm={() => {
 					if (!modalGift) {
 						return;
@@ -127,7 +119,7 @@
 						type="text"
 						value={inputGifterName}
 						oninput={(e: Event) => (inputGifterName = (e.currentTarget as HTMLInputElement).value)}
-						placeholder={"Olga Nordmann"}
+						placeholder={"F. eks. Kåre Nordmann"}
 						required
 					/>
 				{/snippet}
@@ -135,9 +127,10 @@
 
 			<CheckModal  
 				open={modalState == 'unchecked'}
-				title='{modalGift.name} blir gitt av {modalGift.gifterName ?? 'ukjent giver'}'
-                saveText='Jeg er {modalGift.gifterName ?? 'ukjent giver'}'
-				description='Planlegger du å ikke gi denne gaven likevel? Trykk "Jeg er {modalGift.gifterName ?? 'ukjent giver'}". Hvis ikke trykk "Avbryt"'
+				title='{modalGift.gifterName ?? 'Ukjent'} gir {modalGift.name} allerede'
+                saveText='Jeg er {modalGift.gifterName ?? 'Ukjent'}'
+				description='Planlegger du å ikke gi denne gaven likevel? Trykk "Jeg er {modalGift.gifterName ?? 'Ukjent'}". Hvis ikke trykk "Avbryt"'
+				modalIsAbortNotConfirm
 				onConfirm={() => {
 					if (!modalGift) {
 						return;
