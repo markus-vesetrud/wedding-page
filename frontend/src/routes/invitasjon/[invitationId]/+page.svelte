@@ -231,7 +231,7 @@
       <Card.Header>
         <Card.Title class="text-3xl">Velkommen, {invitation.name}</Card.Title>
         <Card.Description>
-          Dere er hjertelig invitert til bryllupet vårt {weddingDateLabel}. Gi oss beskjed under om dere kommer - gjerne innen <strong>{answerDeadlineLabel}</strong>.
+          {members.length > 1 ? "Dere" : "Du"} er hjertelig invitert til bryllupet vårt {weddingDateLabel}. Gi oss beskjed under om {members.length > 1 ? "dere" : "du"} kommer - gjerne innen <strong>{answerDeadlineLabel}</strong>.
         </Card.Description>
       </Card.Header>
     </Card.Root>
@@ -287,12 +287,12 @@
             disabled={saving}
             class="mt-5 min-h-12 w-full rounded-xl bg-foreground text-base font-bold text-background transition-opacity disabled:opacity-60 hover:bg-muted-foreground"
           >
-            {saving ? 'Lagrer ...' : 'Lagre svaret vårt'}
+            {saving ? 'Lagrer ...' : members.length > 1 ? "Lagre svaret vårt" : "Lagre svaret mitt"}
           </button>
 
           {#if savedRecently}
             <p class="mt-3 text-center text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-              ✓ Takk! Svaret deres er lagret.
+              ✓ Takk! Svaret {members.length > 1 ? "deres" : "ditt"} er lagret.
             </p>
           {/if}
         {/if}

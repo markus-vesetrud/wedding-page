@@ -37,7 +37,7 @@ const changeLogFileName = 'state-changes.log';
 const validLists = new Set<ListName>(['gifts', 'guests', 'cakes', 'cakeSuggestions']);
 
 function makeId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return Math.random().toString(36).slice(2, 8);
 }
 
 function nowIso(): string {
@@ -140,8 +140,19 @@ const patchSchemaByList: Partial<Record<ListName, z.ZodTypeAny>> = {
     .strict()
 };
 
+const CreateInvitationBodySchema = z
+  .object({
+    name: z.string().trim().min(1),
+    guestNames: z.array(z.string().trim().min(1)).min(1)
+  })
+  .strict();
+
 export function parseState(input: unknown): AppState {
   return parseWithSchema(AppStateSchema, input, 'state');
+}
+
+export function parseCreateInvitationBody(body: unknown): { name: string; guestNames: string[] } {
+  return parseWithSchema(CreateInvitationBodySchema, body, 'body');
 }
 
 export function parseAddBody(
@@ -459,6 +470,34 @@ export function isListName(value: string): value is ListName {
 
 export function markInvitationVisited(invitation: Invitation): Invitation {
   invitation.visitedAt = [...invitation.visitedAt, nowIso()];
+  return invitation;
+}
+
+export function createInvitationWithGuests(
+  state: AppState,
+  invitationName: string,
+  guestNames: string[]
+): Invitation {
+  const invitation: Invitation = {
+    id: makeId(),
+    name: invitationName,
+    guestIds: [],
+    visitedAt: []
+  };
+
+  for (const guestName of guestNames) {
+    const guest: Guest = {
+      id: makeId(),
+      name: guestName,
+      updatedAt: nowIso(),
+      attendance: Attendance.NotAnswered,
+      invitationId: invitation.id
+    };
+    state.guests.push(guest);
+    invitation.guestIds.push(guest.id);
+  }
+
+  state.invitations.push(invitation);
   return invitation;
 }
 

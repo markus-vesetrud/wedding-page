@@ -4,10 +4,12 @@ import { HttpError } from './errors.js';
 import {
   addItem,
   anonymizeGifters,
+  createInvitationWithGuests,
   finalizeItemUpdate,
   isListName,
   markInvitationVisited,
   parseAddBody,
+  parseCreateInvitationBody,
   parseItemUpdateBody,
   promoteCakeSuggestion
 } from './state.js';
@@ -110,6 +112,26 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
       const state = await deps.readState();
       res.json(anonymizeGifters(state));
     } catch {
+      res.status(500).json({ error: 'Unexpected error' });
+    }
+  });
+
+  app.post('/api/admin/invitations', requireAdmin, async (req: Request, res: Response) => {
+    try {
+      const invitation = await withMutationLock(async () => {
+        const { name, guestNames } = parseCreateInvitationBody(req.body);
+        const state = await deps.readState();
+        const created = createInvitationWithGuests(state, name, guestNames);
+        await deps.writeState(state);
+        return created;
+      });
+
+      res.json({ invitation });
+    } catch (error: unknown) {
+      if (error instanceof HttpError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
       res.status(500).json({ error: 'Unexpected error' });
     }
   });

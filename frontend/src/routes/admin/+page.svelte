@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import type { Cake, CakeSuggestion, Gift } from '$shared/types';
+	import { onDestroy, onMount } from 'svelte';
+	import type { Cake, CakeSuggestion, Gift, Invitation } from '$shared/types';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
@@ -19,6 +19,14 @@
 	let gifts = $state<Gift[]>([]);
 	let cakes = $state<Cake[]>([]);
 	let listsError = $state('');
+
+	let invitationName = $state('');
+	let guestNameInputs = $state<string[]>(['']);
+	let creatingInvitation = $state(false);
+	let invitationFormError = $state('');
+	let createdInvitations = $state<{ id: string; name: string; guestCount: number; link: string }[]>([]);
+	let copiedLink = $state<string | null>(null);
+	let copiedLinkTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function adminHeaders(): Record<string, string> {
 		return { 'x-admin-password': password };
@@ -101,6 +109,77 @@
 		localStorage.removeItem(passwordStorageKey);
 	}
 
+	function addGuestInputRow() {
+		guestNameInputs = [...guestNameInputs, ''];
+	}
+
+	function removeGuestInputRow(index: number) {
+		if (guestNameInputs.length <= 1) return;
+		guestNameInputs = guestNameInputs.filter((_, i) => i !== index);
+	}
+
+	async function createInvitation() {
+		invitationFormError = '';
+		const name = invitationName.trim();
+		const guestNames = guestNameInputs.map((guestName) => guestName.trim()).filter(Boolean);
+
+		if (!name || guestNames.length === 0) {
+			invitationFormError = 'Fyll inn navn og minst én gjest.';
+			return;
+		}
+
+		creatingInvitation = true;
+		try {
+			const res = await fetch('/api/admin/invitations', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json', ...adminHeaders() },
+				body: JSON.stringify({ name, guestNames })
+			});
+
+			if (res.status === 401) {
+				logout();
+				return;
+			}
+
+			if (!res.ok) {
+				const body = (await res.json().catch(() => ({}))) as { error?: string };
+				throw new Error(body.error ?? `Klarte ikke å opprette invitasjonen (${res.status})`);
+			}
+
+			const json = (await res.json()) as { invitation: Invitation };
+			const link = `${location.origin}/invitasjon/${encodeURIComponent(json.invitation.id)}`;
+			createdInvitations = [
+				{
+					id: json.invitation.id,
+					name: json.invitation.name,
+					guestCount: json.invitation.guestIds.length,
+					link
+				},
+				...createdInvitations
+			];
+			invitationName = '';
+			guestNameInputs = [''];
+		} catch (e) {
+			invitationFormError = e instanceof Error ? e.message : 'Klarte ikke å opprette invitasjonen.';
+		} finally {
+			creatingInvitation = false;
+		}
+	}
+
+	async function copyLink(link: string) {
+		try {
+			await navigator.clipboard.writeText(link);
+			copiedLink = link;
+			if (copiedLinkTimer) clearTimeout(copiedLinkTimer);
+			copiedLinkTimer = setTimeout(() => {
+				copiedLink = null;
+				copiedLinkTimer = null;
+			}, 2000);
+		} catch {
+			invitationFormError = 'Klarte ikke å kopiere lenken. Kopier den manuelt i stedet.';
+		}
+	}
+
 	async function promote(suggestion: CakeSuggestion) {
 		promotingId = suggestion.id;
 		listError = '';
@@ -140,6 +219,10 @@
 			else loadLists();
 		}
 		checkingStoredPassword = false;
+	});
+
+	onDestroy(() => {
+		if (copiedLinkTimer) clearTimeout(copiedLinkTimer);
 	});
 </script>
 
@@ -271,6 +354,82 @@
 
 				{#if listsError}
 					<p class="pt-3 text-sm text-red-600">{listsError}</p>
+				{/if}
+			</Card.Content>
+		</Card.Root>
+
+		<Card.Root>
+			<Card.Header>
+				<Card.Title>Ny invitasjon</Card.Title>
+				<Card.Description>Oppretter invitasjonen og gjestene i den samme operasjonen.</Card.Description>
+			</Card.Header>
+			<Card.Content>
+				<form
+					class="space-y-4"
+					onsubmit={(e) => {
+						e.preventDefault();
+						createInvitation();
+					}}
+				>
+					<div class="space-y-1">
+						<label class="text-sm font-medium" for="invitationName">Navn på invitasjonen</label>
+						<Input
+							id="invitationName"
+							type="text"
+							value={invitationName}
+							oninput={(e: Event) => (invitationName = (e.currentTarget as HTMLInputElement).value)}
+							placeholder="F. eks. Familien Hansen"
+							required
+						/>
+					</div>
+
+					<div class="space-y-2">
+						<span class="text-sm font-medium">Gjester</span>
+						{#each guestNameInputs as guestName, index (index)}
+							<div class="flex gap-2">
+								<Input
+									type="text"
+									value={guestName}
+									oninput={(e: Event) => (guestNameInputs[index] = (e.currentTarget as HTMLInputElement).value)}
+									placeholder="Gjestens navn"
+									required
+								/>
+								{#if guestNameInputs.length > 1}
+									<Button type="button" variant="outline" onclick={() => removeGuestInputRow(index)}>
+										Fjern
+									</Button>
+								{/if}
+							</div>
+						{/each}
+						<Button type="button" variant="outline" onclick={addGuestInputRow}>+ Legg til gjest</Button>
+					</div>
+
+					<Button type="submit" disabled={creatingInvitation} class="w-full">
+						{creatingInvitation ? 'Oppretter ...' : 'Opprett invitasjon'}
+					</Button>
+				</form>
+
+				{#if invitationFormError}
+					<p class="pt-3 text-sm text-red-600">{invitationFormError}</p>
+				{/if}
+
+				{#if createdInvitations.length > 0}
+					<div class="mt-6 space-y-3 border-t pt-4">
+						<p class="text-sm font-medium">Nylig opprettet</p>
+						{#each createdInvitations as created (created.id)}
+							<div class="flex items-center justify-between gap-3 rounded-md border p-3 text-sm">
+								<span>
+									<span class="font-medium">{created.name}</span>
+									<span class="block text-muted-foreground">
+										{created.guestCount} gjest{created.guestCount === 1 ? '' : 'er'}
+									</span>
+								</span>
+								<Button type="button" variant="outline" onclick={() => copyLink(created.link)}>
+									{copiedLink === created.link ? 'Kopiert!' : 'Kopier lenke'}
+								</Button>
+							</div>
+						{/each}
+					</div>
 				{/if}
 			</Card.Content>
 		</Card.Root>
