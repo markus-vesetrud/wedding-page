@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Countdown from "../countdown.svelte";
+	import coverPhoto from "$lib/assets/cover-photo.jpeg";
 
 	let {
 		showCountDown
@@ -11,7 +12,7 @@
 <section id="velkommen" class="pt-5">
 	<div
 		class="relative my-4 overflow-hidden rounded-xl bg-cover bg-center bg-no-repeat"
-		style="background-image: url('https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1600&q=80');"
+		style="background-image: url({coverPhoto});"
 	>
 		<div class="absolute inset-0 bg-black/35"></div>
 		<div class="relative z-10 flex min-h-[60svh] flex-col justify-end gap-4 p-6 md:p-8">
