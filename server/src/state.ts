@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
+import { z } from 'zod';
 import { HttpError } from './errors.js';
 import {
   AppState,
@@ -44,247 +45,115 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function assertAllowedKeys(input: Record<string, unknown>, allowedKeys: string[], context: string): void {
-  for (const key of Object.keys(input)) {
-    if (!allowedKeys.includes(key)) {
-      throw new HttpError(`${context} contains unsupported field: ${key}`, 400);
-    }
-  }
+function formatZodError(error: z.ZodError, context: string): string {
+  const issue = error.issues[0];
+  const path = issue.path.length > 0 ? `${context}.${issue.path.join('.')}` : context;
+  return `${path}: ${issue.message}`;
 }
 
-function parseRequiredString(
-  input: Record<string, unknown>,
-  field: string,
-  context: string
-): string {
-  const value = input[field];
-  if (typeof value !== 'string' || !value.trim()) {
-    throw new HttpError(`${context}.${field} must be a non-empty string`, 400);
+function parseWithSchema<T>(schema: z.ZodType<T>, raw: unknown, context: string): T {
+  const result = schema.safeParse(raw);
+  if (!result.success) {
+    throw new HttpError(formatZodError(result.error, context), 400);
   }
-  return value;
+  return result.data;
 }
 
-function parseRequiredBoolean(
-  input: Record<string, unknown>,
-  field: string,
-  context: string
-): boolean {
-  const value = input[field];
-  if (typeof value !== 'boolean') {
-    throw new HttpError(`${context}.${field} must be a boolean`, 400);
-  }
-  return value;
-}
+const ItemSchema = z.object({
+  id: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  updatedAt: z.string().trim().min(1)
+});
 
-function parseOptionalString(
-  input: Record<string, unknown>,
-  field: string,
-  context: string
-): string | undefined {
-  const value = input[field];
-  if (value === undefined) return undefined;
-  if (typeof value !== 'string') {
-    throw new HttpError(`${context}.${field} must be a string`, 400);
-  }
-  return value;
-}
+const GiftSchema = ItemSchema.extend({
+  claimed: z.boolean(),
+  gifterName: z.string().optional()
+}).strict() satisfies z.ZodType<Gift>;
 
-function parseBaseItem(raw: unknown, context: string): Item {
-  if (!isRecord(raw)) {
-    throw new HttpError(`${context} must be an object`, 400);
-  }
+const CakeSchema = ItemSchema.extend({
+  claimed: z.boolean(),
+  bakerName: z.string().optional()
+}).strict() satisfies z.ZodType<Cake>;
 
-  return {
-    id: parseRequiredString(raw, 'id', context),
-    name: parseRequiredString(raw, 'name', context),
-    updatedAt: parseRequiredString(raw, 'updatedAt', context)
-  };
-}
+const GuestSchema = ItemSchema.extend({
+  attendance: z.nativeEnum(Attendance),
+  allergies: z.string().optional(),
+  invitationId: z.string().optional()
+}).strict() satisfies z.ZodType<Guest>;
 
-function isAttendance(value: unknown): value is Attendance {
-  return value === 'Kommer' || value === 'Kommer ikke' || value === 'Ikke svart';
-}
+const InvitationSchema = z
+  .object({
+    id: z.string().trim().min(1),
+    name: z.string().trim().min(1),
+    guestIds: z.array(z.string()),
+    visitedAt: z.array(z.string())
+  })
+  .strict() satisfies z.ZodType<Invitation>;
 
-function parseGift(raw: unknown, context: string): Gift {
-  if (!isRecord(raw)) {
-    throw new HttpError(`${context} must be an object`, 400);
-  }
-  assertAllowedKeys(raw, ['id', 'name', 'claimed', 'updatedAt', 'gifterName'], context);
-  const base = parseBaseItem(raw, context);
-  const claimed = parseRequiredBoolean(raw, 'claimed', context);
-  return {
-    ...base,
-    claimed,
-    gifterName: parseOptionalString(raw, 'gifterName', context)
-  };
-}
+const AppStateSchema = z
+  .object({
+    gifts: z.array(GiftSchema),
+    guests: z.array(GuestSchema),
+    cakes: z.array(CakeSchema),
+    invitations: z.array(InvitationSchema)
+  })
+  .strict() satisfies z.ZodType<AppState>;
 
-function parseStringArray(raw: unknown, context: string): string[] {
-  if (!Array.isArray(raw)) {
-    throw new HttpError(`${context} must be an array`, 400);
-  }
+const AddBodySchema = z.object({ name: z.string().trim().min(1) }).strict();
 
-  const values: string[] = [];
-  for (let index = 0; index < raw.length; index += 1) {
-    const value = raw[index];
-    if (typeof value !== 'string') {
-      throw new HttpError(`${context}[${index}] must be a string`, 400);
-    }
-    values.push(value);
-  }
-
-  return values;
-}
-
-function parseInvitation(raw: unknown, context: string): Invitation {
-  if (!isRecord(raw)) {
-    throw new HttpError(`${context} must be an object`, 400);
-  }
-
-  assertAllowedKeys(raw, ['id', 'name', 'guestIds', 'visitedAt'], context);
-
-  return {
-    id: parseRequiredString(raw, 'id', context),
-    name: parseRequiredString(raw, 'name', context),
-    guestIds: parseStringArray(raw.guestIds, `${context}.guestIds`),
-    visitedAt: parseStringArray(raw.visitedAt, `${context}.visitedAt`)
-  };
-}
-
-function parseGuest(raw: unknown, context: string): Guest {
-  if (!isRecord(raw)) {
-    throw new HttpError(`${context} must be an object`, 400);
-  }
-  assertAllowedKeys(raw, ['id', 'name', 'attendance', 'updatedAt', 'allergies', 'invitationId'], context);
-  const base = parseBaseItem(raw, context);
-  const attendanceRaw = raw.attendance;
-  if (!isAttendance(attendanceRaw)) {
-    throw new HttpError(`${context}.attendance must be one of Kommer, Kommer ikke, Ikke svart`, 400);
-  }
-  return {
-    ...base,
-    attendance: attendanceRaw,
-    allergies: parseOptionalString(raw, 'allergies', context),
-    invitationId: parseOptionalString(raw, 'invitationId', context)
-  };
-}
-
-function parseCake(raw: unknown, context: string): Cake {
-  if (!isRecord(raw)) {
-    throw new HttpError(`${context} must be an object`, 400);
-  }
-  assertAllowedKeys(raw, ['id', 'name', 'claimed', 'updatedAt', 'bakerName'], context);
-  const base = parseBaseItem(raw, context);
-  const claimed = parseRequiredBoolean(raw, 'claimed', context);
-  return {
-    ...base,
-    claimed,
-    bakerName: parseOptionalString(raw, 'bakerName', context)
-  };
-}
+const patchSchemaByList: Partial<Record<ListName, z.ZodTypeAny>> = {
+  gifts: z
+    .object({
+      name: z.string().trim().min(1).optional(),
+      claimed: z.boolean().optional(),
+      gifterName: z.string().optional()
+    })
+    .strict(),
+  cakes: z
+    .object({
+      name: z.string().trim().min(1).optional(),
+      claimed: z.boolean().optional(),
+      bakerName: z.string().optional()
+    })
+    .strict(),
+  guests: z
+    .object({
+      name: z.string().trim().min(1).optional(),
+      attendance: z.nativeEnum(Attendance).optional(),
+      allergies: z.string().optional(),
+      invitationId: z.string().optional()
+    })
+    .strict()
+};
 
 export function parseState(input: unknown): AppState {
-  if (!isRecord(input)) {
-    throw new HttpError('State must be an object', 400);
-  }
-
-  assertAllowedKeys(input, ['gifts', 'guests', 'cakes', 'invitations'], 'state');
-
-  const giftsRaw = input.gifts;
-  const guestsRaw = input.guests;
-  const cakesRaw = input.cakes;
-  const invitationsRaw = input.invitations;
-
-  if (!Array.isArray(giftsRaw)) {
-    throw new HttpError('state.gifts must be an array', 400);
-  }
-  if (!Array.isArray(guestsRaw)) {
-    throw new HttpError('state.guests must be an array', 400);
-  }
-  if (!Array.isArray(cakesRaw)) {
-    throw new HttpError('state.cakes must be an array', 400);
-  }
-  if (!Array.isArray(invitationsRaw)) {
-    throw new HttpError('state.invitations must be an array', 400);
-  }
-
-  return {
-    gifts: giftsRaw.map((entry, index) => parseGift(entry, `state.gifts[${index}]`)),
-    guests: guestsRaw.map((entry, index) => parseGuest(entry, `state.guests[${index}]`)),
-    cakes: cakesRaw.map((entry, index) => parseCake(entry, `state.cakes[${index}]`)),
-    invitations: invitationsRaw.map((entry, index) => parseInvitation(entry, `state.invitations[${index}]`))
-  };
+  return parseWithSchema(AppStateSchema, input, 'state');
 }
 
 export function parseAddBody(body: unknown): { name: string } {
-  if (!isRecord(body)) {
-    throw new HttpError('Request body must be an object', 400);
-  }
-  assertAllowedKeys(body, ['name'], 'body');
-  return { name: parseRequiredString(body, 'name', 'body').trim() };
+  return parseWithSchema(AddBodySchema, body, 'body');
 }
 
 export function parseItemUpdateBody(
   list: ListName,
   body: unknown
 ): { id: string; patch: Record<string, unknown> } {
-  if (!isRecord(body)) {
-    throw new HttpError('Request body must be an object', 400);
-  }
-
-  const id = parseRequiredString(body, 'id', 'body');
-
-  const patch = body.patch;
-  if (!isRecord(patch)) {
-    throw new HttpError('body.patch must be an object', 400);
-  }
-
-  const keys = Object.keys(patch);
-  if (keys.length === 0) {
-    throw new HttpError('body.patch must contain at least one field', 400);
-  }
-
-  if (list === 'gifts') {
-    assertAllowedKeys(patch, ['name', 'claimed', 'gifterName'], 'body.patch');
-    if (patch.name !== undefined && (typeof patch.name !== 'string' || !patch.name.trim())) {
-      throw new HttpError('body.patch.name must be a non-empty string', 400);
-    }
-    if (patch.claimed !== undefined && typeof patch.claimed !== 'boolean') {
-      throw new HttpError('body.patch.claimed must be a boolean', 400);
-    }
-    if (patch.gifterName !== undefined && typeof patch.gifterName !== 'string') {
-      throw new HttpError('body.patch.gifterName must be a string', 400);
-    }
-  } else if (list === 'cakes') {
-    assertAllowedKeys(patch, ['name', 'claimed', 'bakerName'], 'body.patch');
-    if (patch.name !== undefined && (typeof patch.name !== 'string' || !patch.name.trim())) {
-      throw new HttpError('body.patch.name must be a non-empty string', 400);
-    }
-    if (patch.claimed !== undefined && typeof patch.claimed !== 'boolean') {
-      throw new HttpError('body.patch.claimed must be a boolean', 400);
-    }
-    if (patch.bakerName !== undefined && typeof patch.bakerName !== 'string') {
-      throw new HttpError('body.patch.bakerName must be a string', 400);
-    }
-  } else if (list === 'guests') {
-    assertAllowedKeys(patch, ['name', 'attendance', 'allergies', 'invitationId'], 'body.patch');
-    if (patch.name !== undefined && (typeof patch.name !== 'string' || !patch.name.trim())) {
-      throw new HttpError('body.patch.name must be a non-empty string', 400);
-    }
-    if (patch.attendance !== undefined && !isAttendance(patch.attendance)) {
-      throw new HttpError('body.patch.attendance must be one of Kommer, Kommer ikke, Ikke svart', 400);
-    }
-    if (patch.allergies !== undefined && typeof patch.allergies !== 'string') {
-      throw new HttpError('body.patch.allergies must be a string', 400);
-    }
-    if (patch.invitationId !== undefined && typeof patch.invitationId !== 'string') {
-      throw new HttpError('body.patch.invitationId must be a string', 400);
-    }
-  } else {
+  const patchSchema = patchSchemaByList[list as keyof typeof patchSchemaByList];
+  if (!patchSchema) {
     throw new HttpError('Updates are only supported for gifts, cakes and guests', 400);
   }
 
-  return { id, patch: { ...patch } };
+  const updateBodySchema = z.object({
+    id: z.string().trim().min(1),
+    patch: patchSchema.refine((patch) => Object.keys(patch as Record<string, unknown>).length > 0, {
+      message: 'must contain at least one field'
+    })
+  });
+
+  return parseWithSchema(updateBodySchema, body, 'body') as {
+    id: string;
+    patch: Record<string, unknown>;
+  };
 }
 
 export function createStateStore(storageDir: string) {
@@ -365,10 +234,10 @@ export function createStateStore(storageDir: string) {
     const migratedCakes = parseLegacyAwareListEntries(cakesRaw, 'cakes');
 
     const state: AppState = {
-      gifts: migratedGifts.map((entry, index) => parseGift(entry, `gifts[${index}]`)),
-      guests: migratedGuests.map((entry, index) => parseGuest(entry, `guests[${index}]`)),
-      cakes: migratedCakes.map((entry, index) => parseCake(entry, `cakes[${index}]`)),
-      invitations: invitationsRaw.map((entry, index) => parseInvitation(entry, `invitations[${index}]`))
+      gifts: parseWithSchema(z.array(GiftSchema), migratedGifts, 'gifts'),
+      guests: parseWithSchema(z.array(GuestSchema), migratedGuests, 'guests'),
+      cakes: parseWithSchema(z.array(CakeSchema), migratedCakes, 'cakes'),
+      invitations: parseWithSchema(z.array(InvitationSchema), invitationsRaw, 'invitations')
     };
 
     writeState(state);
@@ -449,7 +318,9 @@ export function updateItem(
     const item = state.guests.find((entry) => entry.id === id);
     if (!item) return null;
     if (typeof patch.name === 'string' && patch.name.trim()) item.name = patch.name.trim();
-    if (isAttendance(patch.attendance)) item.attendance = patch.attendance;
+    if (typeof patch.attendance === 'string' && Object.values(Attendance).includes(patch.attendance as Attendance)) {
+      item.attendance = patch.attendance as Attendance;
+    }
     if (typeof patch.allergies === 'string') item.allergies = patch.allergies;
     if (typeof patch.invitationId === 'string') item.invitationId = patch.invitationId;
     item.updatedAt = nowIso();
