@@ -147,12 +147,22 @@ const CreateInvitationBodySchema = z
   })
   .strict();
 
+const BulkAddBodySchema = z
+  .object({
+    names: z.array(z.string().trim().min(1)).min(1)
+  })
+  .strict();
+
 export function parseState(input: unknown): AppState {
   return parseWithSchema(AppStateSchema, input, 'state');
 }
 
 export function parseCreateInvitationBody(body: unknown): { name: string; guestNames: string[] } {
   return parseWithSchema(CreateInvitationBodySchema, body, 'body');
+}
+
+export function parseBulkAddBody(body: unknown): { names: string[] } {
+  return parseWithSchema(BulkAddBodySchema, body, 'body');
 }
 
 export function parseAddBody(
@@ -499,6 +509,23 @@ export function createInvitationWithGuests(
 
   state.invitations.push(invitation);
   return invitation;
+}
+
+export function bulkAddItems(state: AppState, list: 'gifts' | 'cakes', names: string[]): (Gift | Cake)[] {
+  const created: (Gift | Cake)[] = [];
+
+  for (const name of names) {
+    const item: Gift | Cake = {
+      id: makeId(),
+      name,
+      updatedAt: nowIso(),
+      claimed: false
+    };
+    state[list].push(item);
+    created.push(item);
+  }
+
+  return created;
 }
 
 export function anonymizeGifters(state: AppState): { gifts: Gift[]; cakes: Cake[] } {

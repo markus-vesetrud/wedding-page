@@ -4,6 +4,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
+	import BulkAddSection from '$lib/components/admin/bulk-add-section.svelte';
 
 	const passwordStorageKey = 'wedding-admin-password';
 
@@ -357,6 +358,26 @@
 				{/if}
 			</Card.Content>
 		</Card.Root>
+
+		<BulkAddSection
+			list="gifts"
+			title="Bulk-legg til gaver"
+			description="Ett gaveønske per linje. Legges til uten reservasjon, klare for at gjester kan velge dem."
+			placeholder={'Én pr. linje, f. eks.\nKaffetrakter\nStekepanne\nHåndklær'}
+			{adminHeaders}
+			onUnauthorized={logout}
+			onAdded={loadLists}
+		/>
+
+		<BulkAddSection
+			list="cakes"
+			title="Bulk-legg til kaker"
+			description="Én kake per linje. Legges rett i kakelisten, uten å gå via forslagsrunden."
+			placeholder={'Én pr. linje, f. eks.\nSjokoladekake\nBlåbærpai'}
+			{adminHeaders}
+			onUnauthorized={logout}
+			onAdded={loadLists}
+		/>
 
 		<Card.Root>
 			<Card.Header>

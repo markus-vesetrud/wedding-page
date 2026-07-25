@@ -4,11 +4,13 @@ import { HttpError } from './errors.js';
 import {
   addItem,
   anonymizeGifters,
+  bulkAddItems,
   createInvitationWithGuests,
   finalizeItemUpdate,
   isListName,
   markInvitationVisited,
   parseAddBody,
+  parseBulkAddBody,
   parseCreateInvitationBody,
   parseItemUpdateBody,
   promoteCakeSuggestion
@@ -127,6 +129,39 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
       });
 
       res.json({ invitation });
+    } catch (error: unknown) {
+      if (error instanceof HttpError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      res.status(500).json({ error: 'Unexpected error' });
+    }
+  });
+
+  app.post('/api/admin/bulk-add/:list', requireAdmin, async (req: Request<{ list: string }>, res: Response) => {
+    const list = req.params.list;
+    if (list !== 'gifts' && list !== 'cakes') {
+      res.status(400).json({ error: 'Bulk add is only supported for gifts and cakes' });
+      return;
+    }
+
+    try {
+      const items = await withMutationLock(async () => {
+        const { names } = parseBulkAddBody(req.body);
+        const state = await deps.readState();
+        const created = bulkAddItems(state, list, names);
+        await deps.writeState(state);
+
+        for (const item of created) {
+          const update: WsDeltaUpdate = { type: 'add', list, item };
+          await deps.appendStateChangeLog(update, state);
+          deps.broadcastJson(update);
+        }
+
+        return created;
+      });
+
+      res.json({ items });
     } catch (error: unknown) {
       if (error instanceof HttpError) {
         res.status(error.statusCode).json({ error: error.message });
