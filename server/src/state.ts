@@ -7,6 +7,7 @@ import {
   Attendance,
   Item,
   Cake,
+  CakeSuggestion,
   WsDeltaUpdate,
   Gift,
   Guest,
@@ -19,19 +20,21 @@ const defaultState: AppState = {
   gifts: [],
   guests: [],
   cakes: [],
-  invitations: []
+  invitations: [],
+  cakeSuggestions: []
 };
 
 const listFileNames: Record<ListName, string> = {
   gifts: 'gifts.json',
   guests: 'guests.json',
   cakes: 'cakes.json',
-  invitations: 'invitations.json'
+  invitations: 'invitations.json',
+  cakeSuggestions: 'cake-suggestions.json'
 };
 
 const changeLogFileName = 'state-changes.log';
 
-const validLists = new Set<ListName>(['gifts', 'guests', 'cakes']);
+const validLists = new Set<ListName>(['gifts', 'guests', 'cakes', 'cakeSuggestions']);
 
 function makeId(): string {
   return Math.random().toString(36).slice(2, 10);
@@ -70,9 +73,12 @@ const GiftSchema = ItemSchema.extend({
   gifterName: z.string().optional()
 }).strict() satisfies z.ZodType<Gift>;
 
-const CakeSchema = ItemSchema.extend({
-  claimed: z.boolean(),
+const CakeSuggestionSchema = ItemSchema.extend({
   bakerName: z.string().optional()
+}).strict() satisfies z.ZodType<CakeSuggestion>;
+
+const CakeSchema = CakeSuggestionSchema.extend({
+  claimed: z.boolean()
 }).strict() satisfies z.ZodType<Cake>;
 
 const GuestSchema = ItemSchema.extend({
@@ -95,11 +101,19 @@ const AppStateSchema = z
     gifts: z.array(GiftSchema),
     guests: z.array(GuestSchema),
     cakes: z.array(CakeSchema),
-    invitations: z.array(InvitationSchema)
+    invitations: z.array(InvitationSchema),
+    cakeSuggestions: z.array(CakeSuggestionSchema)
   })
   .strict() satisfies z.ZodType<AppState>;
 
-const AddBodySchema = z.object({ name: z.string().trim().min(1) }).strict();
+const addBodySchemaByList: Partial<Record<ListName, z.ZodTypeAny>> = {
+  gifts: z.object({ name: z.string().trim().min(1), gifterName: z.string().trim().min(1) }).strict(),
+  cakes: z.object({ name: z.string().trim().min(1), bakerName: z.string().trim().min(1).optional() }).strict(),
+  cakeSuggestions: z
+    .object({ name: z.string().trim().min(1), bakerName: z.string().trim().min(1).optional() })
+    .strict(),
+  guests: z.object({ name: z.string().trim().min(1) }).strict()
+};
 
 const patchSchemaByList: Partial<Record<ListName, z.ZodTypeAny>> = {
   gifts: z
@@ -130,8 +144,19 @@ export function parseState(input: unknown): AppState {
   return parseWithSchema(AppStateSchema, input, 'state');
 }
 
-export function parseAddBody(body: unknown): { name: string } {
-  return parseWithSchema(AddBodySchema, body, 'body');
+export function parseAddBody(
+  list: ListName,
+  body: unknown
+): { name: string; gifterName?: string; bakerName?: string } {
+  const schema = addBodySchemaByList[list];
+  if (!schema) {
+    throw new HttpError(`Adding items is not supported for ${list}`, 400);
+  }
+  return parseWithSchema(schema, body, 'body') as {
+    name: string;
+    gifterName?: string;
+    bakerName?: string;
+  };
 }
 
 export function parseItemUpdateBody(
@@ -162,6 +187,7 @@ export function createStateStore(storageDir: string) {
     guests: path.join(storageDir, listFileNames.guests),
     cakes: path.join(storageDir, listFileNames.cakes),
     invitations: path.join(storageDir, listFileNames.invitations),
+    cakeSuggestions: path.join(storageDir, listFileNames.cakeSuggestions)
   };
 
   const changeLogFile = path.join(storageDir, changeLogFileName);
@@ -203,6 +229,9 @@ export function createStateStore(storageDir: string) {
     if (!(await exists(listFiles.invitations))) {
       await writeListFile(listFiles.invitations, defaultState.invitations);
     }
+    if (!(await exists(listFiles.cakeSuggestions))) {
+      await writeListFile(listFiles.cakeSuggestions, defaultState.cakeSuggestions);
+    }
     if (!(await exists(changeLogFile))) {
       await fs.writeFile(changeLogFile, '', 'utf8');
     }
@@ -215,6 +244,7 @@ export function createStateStore(storageDir: string) {
     const guestsRaw = await readJsonFile(listFiles.guests, 'guests.json');
     const cakesRaw = await readJsonFile(listFiles.cakes, 'cakes.json');
     const invitationsRaw = await readJsonFile(listFiles.invitations, 'invitations.json');
+    const cakeSuggestionsRaw = await readJsonFile(listFiles.cakeSuggestions, 'cake-suggestions.json');
 
     if (!Array.isArray(giftsRaw)) {
       throw new HttpError('gifts.json must contain an array', 400);
@@ -228,6 +258,9 @@ export function createStateStore(storageDir: string) {
     if (!Array.isArray(invitationsRaw)) {
       throw new HttpError('invitations.json must contain an array', 400);
     }
+    if (!Array.isArray(cakeSuggestionsRaw)) {
+      throw new HttpError('cake-suggestions.json must contain an array', 400);
+    }
 
     const migratedGifts = parseLegacyAwareListEntries(giftsRaw, 'gifts');
     const migratedGuests = parseLegacyAwareListEntries(guestsRaw, 'guests');
@@ -237,7 +270,8 @@ export function createStateStore(storageDir: string) {
       gifts: parseWithSchema(z.array(GiftSchema), migratedGifts, 'gifts'),
       guests: parseWithSchema(z.array(GuestSchema), migratedGuests, 'guests'),
       cakes: parseWithSchema(z.array(CakeSchema), migratedCakes, 'cakes'),
-      invitations: parseWithSchema(z.array(InvitationSchema), invitationsRaw, 'invitations')
+      invitations: parseWithSchema(z.array(InvitationSchema), invitationsRaw, 'invitations'),
+      cakeSuggestions: parseWithSchema(z.array(CakeSuggestionSchema), cakeSuggestionsRaw, 'cakeSuggestions')
     };
 
     writeState(state);
@@ -251,6 +285,7 @@ export function createStateStore(storageDir: string) {
     await writeListFile(listFiles.guests, state.guests);
     await writeListFile(listFiles.cakes, state.cakes);
     await writeListFile(listFiles.invitations, state.invitations);
+    await writeListFile(listFiles.cakeSuggestions, state.cakeSuggestions);
   }
 
   async function appendStateChangeLog(update: WsDeltaUpdate, state: AppState): Promise<void> {
@@ -263,7 +298,8 @@ export function createStateStore(storageDir: string) {
         gifts: state.gifts.length,
         guests: state.guests.length,
         cakes: state.cakes.length,
-        invitations: state.invitations.length
+        invitations: state.invitations.length,
+        cakeSuggestions: state.cakeSuggestions.length
       }
     };
 
@@ -278,20 +314,46 @@ export function createStateStore(storageDir: string) {
   };
 }
 
-export function addItem(state: AppState, list: ListName, name: string): WsDeltaUpdate {
+export function addItem(
+  state: AppState,
+  list: ListName,
+  input: { name: string; gifterName?: string; bakerName?: string }
+): WsDeltaUpdate {
   const base: Item = {
     id: makeId(),
-    name,
+    name: input.name,
     updatedAt: nowIso()
   };
 
   let item: ListEntity;
-  if (list === 'gifts') item = { ...base, claimed: false };
-  else if (list === 'guests') item = { ...base, attendance: Attendance.NotAnswered };
-  else item = { ...base, claimed: false };
+  if (list === 'gifts') {
+    item = { ...base, claimed: Boolean(input.gifterName), gifterName: input.gifterName };
+  } else if (list === 'guests') {
+    item = { ...base, attendance: Attendance.NotAnswered };
+  } else if (list === 'cakeSuggestions') {
+    item = { ...base, bakerName: input.bakerName };
+  } else {
+    item = { ...base, claimed: Boolean(input.bakerName), bakerName: input.bakerName };
+  }
 
   state[list].push(item as never);
   return { type: 'add', list, item };
+}
+
+export function promoteCakeSuggestion(state: AppState, suggestionId: string): Cake | null {
+  const index = state.cakeSuggestions.findIndex((entry) => entry.id === suggestionId);
+  if (index === -1) return null;
+
+  const [suggestion] = state.cakeSuggestions.splice(index, 1);
+  const cake: Cake = {
+    id: makeId(),
+    name: suggestion.name,
+    bakerName: suggestion.bakerName,
+    updatedAt: nowIso(),
+    claimed: Boolean(suggestion.bakerName)
+  };
+  state.cakes.push(cake);
+  return cake;
 }
 
 export function updateItem(
@@ -398,4 +460,24 @@ export function isListName(value: string): value is ListName {
 export function markInvitationVisited(invitation: Invitation): Invitation {
   invitation.visitedAt = [...invitation.visitedAt, nowIso()];
   return invitation;
+}
+
+export function anonymizeGifters(state: AppState): { gifts: Gift[]; cakes: Cake[] } {
+  const anonNameByRealName = new Map<string, string>();
+
+  function anonymize(name: string): string {
+    const key = name.trim().toLowerCase();
+    let anon = anonNameByRealName.get(key);
+    if (!anon) {
+      anon = `Gjest ${anonNameByRealName.size + 1}`;
+      anonNameByRealName.set(key, anon);
+    }
+    return anon;
+  }
+
+  const gifts = state.gifts.map((gift) =>
+    gift.gifterName ? { ...gift, gifterName: anonymize(gift.gifterName) } : gift
+  );
+
+  return { gifts, cakes: state.cakes };
 }

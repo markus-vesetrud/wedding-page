@@ -1,6 +1,6 @@
-import type { AppState, WsDeltaUpdate, WsMessage } from '$shared/types';
+import type { PublicAppState, WsDeltaUpdate, WsMessage } from '$shared/types';
 
-export type StateCallback = (state: AppState) => void;
+export type StateCallback = (state: PublicAppState) => void;
 export type DeltaCallback = (update: WsDeltaUpdate) => void;
 
 interface WebSocketHandlers {

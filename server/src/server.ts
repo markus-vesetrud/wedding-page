@@ -9,6 +9,7 @@ import { registerRoutes } from './routes.js';
 const host_port = Number(process.env.HOST_PORT || '3000');
 const port = Number(process.env.PORT || '3000');
 const stateDir = process.env.STATE_DIR || '/data';
+const adminPassword = process.env.ADMIN_PASSWORD;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,6 +27,7 @@ const { broadcastJson } = setupWebSocket(server, {
 
 registerRoutes(app, {
   publicDir,
+  adminPassword,
   readState: stateStore.readState,
   writeState: stateStore.writeState,
   appendStateChangeLog: stateStore.appendStateChangeLog,

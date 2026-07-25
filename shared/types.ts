@@ -15,9 +15,12 @@ export interface Guest extends Item {
   invitationId?: string;
 }
 
-export interface Cake extends Item {
-  claimed: boolean;
+export interface CakeSuggestion extends Item {
   bakerName?: string;
+}
+
+export interface Cake extends CakeSuggestion {
+  claimed: boolean;
 }
 
 export interface Gift extends Item {
@@ -32,22 +35,27 @@ export interface Invitation {
   visitedAt: string[];
 }
 
-export interface AppState {
+/** State broadcast to all connected clients — excludes unreviewed cake suggestions, which are admin-only. */
+export interface PublicAppState {
   gifts: Gift[];
   guests: Guest[];
   cakes: Cake[];
   invitations: Invitation[];
 }
 
+export interface AppState extends PublicAppState {
+  cakeSuggestions: CakeSuggestion[];
+}
+
 export type ListName = keyof AppState;
-export type ListEntity = Gift | Cake | Guest | Invitation;
+export type ListEntity = Gift | Cake | Guest | Invitation | CakeSuggestion;
 
 export type WsDeltaUpdate =
   | { type: 'add'; list: ListName; item: ListEntity }
   | { type: 'update'; list: ListName; item: ListEntity };
 
-export type WsDeltaType = WsDeltaUpdate['type']; 
+export type WsDeltaType = WsDeltaUpdate['type'];
 
 export type WsMessage =
-  | { type: 'state'; data: AppState }
+  | { type: 'state'; data: PublicAppState }
   | WsDeltaUpdate;

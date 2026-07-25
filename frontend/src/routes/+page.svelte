@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import { createWebSocket } from '$lib/websocket';
-	import { type AppState, type Cake, type WsDeltaType, type Gift, type Guest, type Item, type ListName, type WsDeltaUpdate } from '$shared/types';
+	import { type PublicAppState, type Cake, type WsDeltaType, type Gift, type Guest, type Item, type ListName, type WsDeltaUpdate } from '$shared/types';
 	import WelcomeHero from '$lib/components/sections/welcome-hero.svelte';
 	import WelcomeDetails from '$lib/components/sections/welcome-details.svelte';
 	import SurfaceCard from '$lib/components/surface-card.svelte';
@@ -44,6 +44,8 @@
 	let showConnectionStatus = $state(true);
 	let newGift = $state('');
 	let newCake = $state('');
+	let cakeSuggestionSubmitted = $state(false);
+	let cakeSuggestionSubmittedTimer: ReturnType<typeof setTimeout> | null = null;
 
 	let ws: ReturnType<typeof createWebSocket> | null = null;
 	let hideConnectionStatusTimer: ReturnType<typeof setTimeout> | null = null;
@@ -201,20 +203,23 @@
 		if (update) applyDelta(update);
 	}
 
-	async function addGift() {
-		const name = captalize(newGift.trim());
-		if (!name) return;
-		const update = await callListEndpoint('gifts', 'add', { name });
+	async function addGift(name: string, gifterName?: string) {
+		const update = await callListEndpoint('gifts', 'add', { name, gifterName });
 		if (update) applyDelta(update);
 		newGift = '';
 	}
 
-	async function addCake() {
-		const name = captalize(newCake.trim());
-		if (!name) return;
-		const update = await callListEndpoint('cakes', 'add', { name });
-		if (update) applyDelta(update);
+	async function addCake(name: string, bakerName?: string) {
+		const update = await callListEndpoint('cakeSuggestions', 'add', { name, bakerName });
 		newCake = '';
+		if (!update) return;
+
+		cakeSuggestionSubmitted = true;
+		if (cakeSuggestionSubmittedTimer) clearTimeout(cakeSuggestionSubmittedTimer);
+		cakeSuggestionSubmittedTimer = setTimeout(() => {
+			cakeSuggestionSubmitted = false;
+			cakeSuggestionSubmittedTimer = null;
+		}, 4000);
 	}
 
 	onMount(() => {
@@ -227,7 +232,7 @@
 		};
 
 		ws = createWebSocket({
-			onState: (state: AppState) => {
+			onState: (state: PublicAppState) => {
 				gifts = state.gifts ?? [];
 				guests = state.guests ?? [];
 				cakes = state.cakes ?? [];
@@ -275,6 +280,7 @@
 	onDestroy(() => {
 		ws?.close();
 		if (hideConnectionStatusTimer) clearTimeout(hideConnectionStatusTimer);
+		if (cakeSuggestionSubmittedTimer) clearTimeout(cakeSuggestionSubmittedTimer);
 	});
 </script>
 
@@ -341,6 +347,7 @@
 				newCake={newCake}
 				onNewCakeChange={(value) => (newCake = value)}
 				onAddCake={addCake}
+				{cakeSuggestionSubmitted}
 				applyModalUpdate={(cake) => applyModalUpdate(cake, 'cakes')}
 			/>
 			<!-- <GuestSection

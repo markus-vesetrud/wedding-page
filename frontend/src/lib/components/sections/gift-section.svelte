@@ -7,7 +7,7 @@
 	import AnimatedList from '$lib/components/animated-list.svelte';
 	import ReservableRow from '$lib/components/reservable-row.svelte';
 	import CheckModal from '../check-modal.svelte';
-	import { normalizeName } from '$lib/utils/capitalize';
+	import { captalize, normalizeName } from '$lib/utils/capitalize';
 
 	let {
 		gifts,
@@ -21,15 +21,24 @@
 		isLoading: boolean;
 		newGift: string;
 		onNewGiftChange: (value: string) => void;
-		onAddGift: () => void;
+		onAddGift: (name: string, gifterName?: string) => void;
 		applyModalUpdate: (gift: Gift) => void;
 	} = $props();
 
-	type ModalState = 'closed' | 'checked' | 'unchecked';
+	type ModalState = 'closed' | 'adding' | 'checked' | 'unchecked';
 
 	let modalState = $state<ModalState>('closed');
 	let modalGift = $state<Gift | undefined>();
 	let inputGifterName = $state('');
+	let pendingGiftName = $state('');
+
+	function openAddModal() {
+		const name = captalize(newGift.trim());
+		if (!name) return;
+		pendingGiftName = name;
+		inputGifterName = '';
+		modalState = 'adding';
+	}
 
 	function openCheckModal(gift: Gift) {
 		modalState = 'checked';
@@ -47,6 +56,7 @@
 		modalState = 'closed';
 		modalGift = undefined;
 		inputGifterName = '';
+		pendingGiftName = '';
 	}
 
 	function toggleGift(id: string) {
@@ -82,7 +92,7 @@
 			class="flex flex-col gap-3 sm:flex-row"
 			onsubmit={(e) => {
 				e.preventDefault();
-				onAddGift();
+				openAddModal();
 			}}
 		>
 			<Input
@@ -94,6 +104,30 @@
 			/>
 			<Button type="submit" class="min-w-28 whitespace-nowrap bg-foreground">Legg til</Button>
 		</form>
+
+		<CheckModal
+			open={modalState == 'adding'}
+			title='Legg til "{pendingGiftName}"'
+			saveText="Legg til"
+			description='Skriv inn navnet ditt. Det vises kun hvis noen senere prøver å fjerne reservasjonen - de andre gjestene og brudeparet ser bare at den er reservert.'
+			onConfirm={() => {
+				onAddGift(pendingGiftName, normalizeName(inputGifterName));
+				closeModal();
+			}}
+			onClose={closeModal}
+		>
+			{#snippet children()}
+				<label class="text-sm font-medium" for="inputAddGifterName">Navnet ditt</label>
+				<Input
+					id="inputAddGifterName"
+					type="text"
+					value={inputGifterName}
+					oninput={(e: Event) => (inputGifterName = (e.currentTarget as HTMLInputElement).value)}
+					placeholder={"F. eks. Kåre Nordmann"}
+					required
+				/>
+			{/snippet}
+		</CheckModal>
 
 		{#if modalGift !== undefined}
 			<CheckModal  
