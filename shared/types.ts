@@ -17,7 +17,6 @@ export interface Guest extends Item {
 
 export interface Cake extends Item {
   claimed: boolean;
-  servings: number;
   bakerName?: string;
 }
 

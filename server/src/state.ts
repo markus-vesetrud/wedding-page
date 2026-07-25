@@ -173,17 +173,12 @@ function parseCake(raw: unknown, context: string): Cake {
   if (!isRecord(raw)) {
     throw new HttpError(`${context} must be an object`, 400);
   }
-  assertAllowedKeys(raw, ['id', 'name', 'claimed', 'updatedAt', 'servings', 'bakerName'], context);
+  assertAllowedKeys(raw, ['id', 'name', 'claimed', 'updatedAt', 'bakerName'], context);
   const base = parseBaseItem(raw, context);
   const claimed = parseRequiredBoolean(raw, 'claimed', context);
-  const servings = raw.servings;
-  if (typeof servings !== 'number' || !Number.isFinite(servings)) {
-    throw new HttpError(`${context}.servings must be a number`, 400);
-  }
   return {
     ...base,
     claimed,
-    servings,
     bakerName: parseOptionalString(raw, 'bakerName', context)
   };
 }
@@ -261,7 +256,7 @@ export function parseItemUpdateBody(
       throw new HttpError('body.patch.gifterName must be a string', 400);
     }
   } else if (list === 'cakes') {
-    assertAllowedKeys(patch, ['name', 'claimed', 'bakerName', 'servings'], 'body.patch');
+    assertAllowedKeys(patch, ['name', 'claimed', 'bakerName'], 'body.patch');
     if (patch.name !== undefined && (typeof patch.name !== 'string' || !patch.name.trim())) {
       throw new HttpError('body.patch.name must be a non-empty string', 400);
     }
@@ -270,9 +265,6 @@ export function parseItemUpdateBody(
     }
     if (patch.bakerName !== undefined && typeof patch.bakerName !== 'string') {
       throw new HttpError('body.patch.bakerName must be a string', 400);
-    }
-    if (patch.servings !== undefined && (typeof patch.servings !== 'number' || !Number.isFinite(patch.servings))) {
-      throw new HttpError('body.patch.servings must be a number', 400);
     }
   } else if (list === 'guests') {
     assertAllowedKeys(patch, ['name', 'attendance', 'allergies', 'invitationId'], 'body.patch');
@@ -427,7 +419,7 @@ export function addItem(state: AppState, list: ListName, name: string): WsDeltaU
   let item: ListEntity;
   if (list === 'gifts') item = { ...base, claimed: false };
   else if (list === 'guests') item = { ...base, attendance: Attendance.NotAnswered };
-  else item = { ...base, claimed: false, servings: 0 };
+  else item = { ...base, claimed: false };
 
   state[list].push(item as never);
   return { type: 'add', list, item };
@@ -473,9 +465,6 @@ export function updateItem(
       const value = patch.bakerName.trim();
       if (value) item.bakerName = value;
       else delete item.bakerName;
-    }
-    if (typeof patch.servings === 'number' && Number.isFinite(patch.servings)) {
-      item.servings = patch.servings;
     }
     item.updatedAt = nowIso();
     return { type: 'update', list, item };
