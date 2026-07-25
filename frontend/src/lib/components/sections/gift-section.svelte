@@ -75,7 +75,7 @@
 <SectionShell
 	id="gaver"
 	title="Gaveliste"
-	ingress="Listen er kun forslag, laget for å unngå at flere gir det samme. Reserver gjerne noe - hvem som har reservert hva holdes skjult for de andre gjestene og brudeparret. Mangler noe? Legg det til nederst. Husk kvittering uansett ;D"
+	ingress="Listen er kun forslag, laget for å unngå at flere gir det samme. Reserver gjerne noe - hvem som har reservert hva holdes skjult for de andre gjestene og brudeparet. Mangler noe? Legg det til nederst. Husk kvittering uansett ;D"
 >
 	<div class="space-y-3">
 		<AnimatedList items={sortedGifts} {isLoading} emptyText="Ingen gaveønsker i listen ennå." loadingCount={4}>

@@ -4,11 +4,12 @@
 
 	const program = [
 		{ time: '14:00', name: 'Vielse' },
-		{ time: '14:45', name: 'Bildetaking' },
-		{ time: '15:15', name: 'Mingling' },
-		{ time: '16:00', name: 'Middag' },
-		{ time: '20:00', name: 'Dans' },
-		{ time: '22:00', name: 'Kaker' }
+		{ time: '15:00', name: 'Mingling' },
+		{ time: '17:00', name: 'Selskap begynner' },
+		{ time: '17:30', name: 'Middag' },
+		{ time: '19:45', name: 'Pause' },
+		{ time: '20:30', name: 'Kaffe og kaker' },
+		{ time: '23:59', name: 'Dansegulvet stenges' }
 	];
 </script>
 

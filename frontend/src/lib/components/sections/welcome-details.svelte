@@ -11,8 +11,8 @@
 			address: 'Kirkeveien 121, 1480 Slattum'
 		},
 		{
-			kind: 'Fest',
-			time: '16:00',
+			kind: 'Selskap',
+			time: '17:00',
 			place: 'Nittedal kirkestue',
 			address: 'Kirkeveien 123, 1480 Slattum'
 		}

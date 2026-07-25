@@ -286,7 +286,7 @@
 
 <div bind:this={scrollContainerElement} class="main-page">
 	<main
-		class="mx-auto w-full max-w-2xl px-4 md:px-6"
+		class="mx-auto w-full max-w-2xl px-4 md:px-6 mb-4"
 		style={`--tabs-height: ${tabBarHeightPx}px; --tabs-sticky-top: ${TAB_STICKY_TOP_PX}px; --tabs-scroll-gap: ${TAB_SCROLL_MARGIN_GAP_PX}px;`}
 	>
 		<WelcomeHero showCountDown />
