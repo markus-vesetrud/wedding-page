@@ -75,9 +75,10 @@
 <SectionShell
 	id="gaver"
 	title="Gaveliste"
-	ingress="Listen er kun forslag, laget for å unngå at flere gir det samme. Reserver gjerne noe - hvem som har reservert hva holdes skjult for de andre gjestene og brudeparet. Mangler noe? Legg det til nederst. Husk kvittering uansett ;D"
+	ingress="Gavelisten kommer etter hvert, sjekk igjen senere :D"
+	// ingress="Listen er kun forslag, laget for å unngå at flere gir det samme. Reserver gjerne noe - hvem som har reservert hva holdes skjult for de andre gjestene og brudeparet. Mangler noe? Legg det til nederst. Husk kvittering uansett ;D"
 >
-	<div class="space-y-3">
+	<!-- <div class="space-y-3">
 		<AnimatedList items={sortedGifts} {isLoading} emptyText="Ingen gaveønsker i listen ennå." loadingCount={4}>
 			{#snippet children(gift)}
 				<ReservableRow
@@ -177,5 +178,5 @@
 				onClose={closeModal}
 			/>
 		{/if}
-	</div>
+	</div> -->
 </SectionShell>

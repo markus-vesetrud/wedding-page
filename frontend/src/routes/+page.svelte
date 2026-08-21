@@ -10,10 +10,11 @@
 	import GuestSection from '$lib/components/sections/guest-section.svelte';
 	import GiftSection from '$lib/components/sections/gift-section.svelte';
 	import CakeSection from '$lib/components/sections/cake-section.svelte';
+	import SpeechSection from '$lib/components/sections/speech-section.svelte';
 	import { captalize } from '$lib/utils/capitalize';
 	import Back from '$lib/components/ui/icon/back.svelte';
 
-	type SectionId = 'velkommen' | 'program' | 'gjester' | 'gaver' | 'kaker';
+	type SectionId = 'velkommen' | 'program' | 'gjester' | 'gaver' | 'kaker' | 'taler';
 
 	const TAB_STICKY_TOP_PX = 0;
 	const TAB_SCROLL_MARGIN_GAP_PX = 8;
@@ -26,6 +27,7 @@
 	const sectionTabs: Array<{ id: SectionId; label: string }> = [
 		{ id: 'velkommen', label: 'Velkommen' },
 		{ id: 'program', label: 'Program' },
+		{ id: 'taler', label: 'Taler' },
 		{ id: 'gaver', label: 'Gaver' },
 		{ id: 'kaker', label: 'Kaker' },
 		// { id: 'gjester', label: 'Gjesteliste' }
@@ -333,6 +335,7 @@
 
 		<div class="space-y-20 mt-20">
 			<ProgramSection />
+			<SpeechSection />
 			<GiftSection
 				{gifts}
 				isLoading={!connected}
