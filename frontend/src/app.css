@@ -1,7 +1,7 @@
 @import 'tailwindcss';
 @import "tw-animate-css";
-@import "@fontsource-variable/inter";
-@import '@fontsource/tangerine/700.css';
+@import "@fontsource-variable/karla";
+@import "@fontsource-variable/cormorant-garamond";
 /*
   ---break---
 */
@@ -38,32 +38,32 @@
   ---break---
 */
 :root {
-  font-family: 'Nunito Sans', system-ui, sans-serif;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.2617 0.0228 300.08);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2617 0.0228 300.08);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2617 0.0228 300.08);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.3456 0.0286 302.03);
-  --muted-foreground-subtle: oklch(0.6 0.02 302.03);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.5255 0.1105 352.97);
+  font-family: 'Karla Variable', system-ui, sans-serif;
+  --background: #f2f5ef;
+  --foreground: #1f3326;
+  --card: #fbfcfa;
+  --card-foreground: #1f3326;
+  --popover: #fbfcfa;
+  --popover-foreground: #1f3326;
+  --primary: #2e4a38;
+  --primary-foreground: #f2f5ef;
+  --secondary: #fbfcfa;
+  --secondary-foreground: #1f3326;
+  --muted: #e8eee4;
+  --muted-foreground: #55604f;
+  --muted-foreground-subtle: #8b978c;
+  --accent: #7a6a43;
+  --accent-foreground: #f2f5ef;
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: #d5ded0;
+  --input: #d5ded0;
+  --ring: #7a6a43;
   --chart-1: oklch(0.809 0.105 251.813);
   --chart-2: oklch(0.623 0.214 259.815);
   --chart-3: oklch(0.546 0.245 262.881);
   --chart-4: oklch(0.488 0.243 264.376);
   --chart-5: oklch(0.424 0.199 265.638);
-  --radius: 0.625rem;
+  --radius: 0.15rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.2617 0.0228 300.08);
   --sidebar-primary: oklch(0.205 0 0);
@@ -114,8 +114,8 @@
   ---break---
 */
 @theme inline {
-  --font-sans: 'Inter Variable', sans-serif;
-  --font-script: 'Tangerine', cursive;
+  --font-sans: 'Karla Variable', sans-serif;
+  --font-serif: 'Cormorant Garamond Variable', serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);

@@ -5,7 +5,7 @@
 		id,
 		title,
 		ingress,
-		headingClass = 'text-2xl font-semibold tracking-tight',
+		headingClass = 'font-serif text-3xl font-medium tracking-tight',
 		children
 	}: {
 		id: string;

@@ -48,7 +48,7 @@
                     <div class="flex justify-end gap-2 mt-2">
                         <Button variant={modalIsAbortNotConfirm ? "default" : "outline"} onclick={onClose}>Avbryt</Button>
                         
-                        <Button class={modalIsAbortNotConfirm ? "" : "bg-emerald-600 hover:bg-emerald-700" } variant={modalIsAbortNotConfirm ? "outline" : "default"} type='submit'>{saveText}</Button>
+                        <Button variant={modalIsAbortNotConfirm ? "outline" : "default"} type='submit'>{saveText}</Button>
                     </div>
                 </form>
             </Card.Content>

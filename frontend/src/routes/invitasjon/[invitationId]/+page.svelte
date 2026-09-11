@@ -40,15 +40,9 @@
 
   function pillClasses(value: Attendance, active: boolean): string {
     if (!active) {
-      return 'border-input bg-background text-foreground hover:bg-muted';
+      return 'border-input bg-background text-muted-foreground hover:border-accent';
     }
-    if (value === Attendance.Attending) {
-      return 'border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100';
-    }
-    if (value === Attendance.NotAttending) {
-      return 'border-red-600 bg-red-50 text-red-800 hover:bg-red-100';
-    }
-    return 'bg-foreground text-background hover:bg-muted-foreground';
+    return 'border-accent bg-muted text-foreground font-semibold';
   }
 
   function upsertMember(memberId: string, updater: (member: Member) => Member) {
@@ -255,7 +249,7 @@
                     <button
                       type="button"
                       onclick={() => setAttendance(member.id, option)}
-                      class={`min-h-11 flex-1 basis-28 rounded-lg border-2 px-3 py-2 text-sm font-semibold transition-colors ${pillClasses(option, member.attendance === option)}`}
+                      class={`min-h-11 flex-1 basis-28 rounded-lg border-2 px-3 py-2 text-sm transition-colors ${pillClasses(option, member.attendance === option)}`}
                     >
                       {option}
                     </button>
@@ -285,13 +279,13 @@
             type="button"
             onclick={saveAll}
             disabled={saving}
-            class="mt-5 min-h-12 w-full rounded-xl bg-foreground text-base font-bold text-background transition-opacity disabled:opacity-60 hover:bg-muted-foreground"
+            class="mt-5 min-h-12 w-full rounded-xl bg-primary text-base font-semibold text-primary-foreground transition-colors disabled:opacity-60 hover:bg-accent"
           >
             {saving ? 'Lagrer ...' : members.length > 1 ? "Lagre svaret vårt" : "Lagre svaret mitt"}
           </button>
 
           {#if savedRecently}
-            <p class="mt-3 text-center text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+            <p class="mt-3 text-center text-sm font-semibold text-foreground">
               ✓ Takk! Svaret {members.length > 1 ? "deres" : "ditt"} er lagret.
             </p>
           {/if}
@@ -304,18 +298,33 @@
     </Card.Root>
 
     {/if}
+
+    <div class="flex flex-wrap items-center gap-4 rounded-xl border bg-muted p-5">
+      <div class="flex-1" style="min-width: 200px;">
+        <p class="text-lg font-semibold">Vil dere ha invitasjonen på papir?</p>
+        <p class="text-muted-foreground text-sm leading-snug">Last ned og skriv ut i A5, til kjøleskapet eller oppslagstavla.</p>
+      </div>
+      <button
+        type="button"
+        disabled
+        title="Kommer snart"
+        class="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground opacity-60 disabled:cursor-not-allowed"
+      >
+        <span>↓</span><span>Last ned PDF</span>
+      </button>
+    </div>
+
     <a
       href={mainMenuHref}
-      class="flex items-center gap-4 rounded-xl bg-gradient-to-br from-rose-700 to-rose-800 p-5 text-white shadow-lg shadow-rose-950/20 transition-transform hover:scale-[1.01]"
-      style="background:linear-gradient(150deg,#a44371,#833459);"
+      class="flex items-center gap-4 rounded-xl bg-primary p-5 text-primary-foreground transition-colors hover:bg-accent"
     >
       <span class="flex h-8 w-8 shrink-0 items-center justify-center">
-        <Gift/>
+        <Gift color="currentColor"/>
       </span>
       <span class="flex-1">
-        <span class="block text-lg font-bold leading-tight">Program, sted og gaver</span>
+        <span class="block text-lg font-semibold leading-tight">Program, sted og gaver</span>
         <span class="block text-sm font-medium opacity-90">Alt det praktiske for dagen</span>
       </span>
-      <span class="shrink-0 text-2xl font-bold"><Forward size={30}/></span>
+      <span class="shrink-0"><Forward color="currentColor" size={30}/></span>
     </a>
 </div>

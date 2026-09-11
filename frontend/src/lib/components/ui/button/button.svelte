@@ -13,7 +13,7 @@
 	} = $props();
 
 	const variantClasses: Record<string, string> = {
-		default: 'bg-foreground text-primary-foreground hover:bg-foreground/90',
+		default: 'bg-primary text-primary-foreground hover:bg-accent hover:text-accent-foreground',
 		outline: 'border bg-background hover:bg-accent hover:text-accent-foreground',
 		ghost: 'hover:bg-accent hover:text-accent-foreground'
 	};

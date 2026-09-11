@@ -11,7 +11,7 @@
 >
 	<div class="space-y-4">
 		<div>
-			<h3 class="mb-2 font-semibold">Kontakt toastmasterne</h3>
+			<h3 class="text-accent mb-3 text-xs font-semibold tracking-widest uppercase">Kontakt toastmasterne</h3>
 			<div class="grid gap-4 sm:grid-cols-2">
 				<Card class="p-4">
 					<p class="text-muted-foreground text-sm leading-relaxed">

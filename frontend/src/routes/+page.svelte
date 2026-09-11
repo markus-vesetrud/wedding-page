@@ -313,11 +313,11 @@
 							<button
 								type="button"
 								onclick={() => scrollToSection(tab.id)}
-								class={`flex w-full flex-col items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium transition-colors hover:bg-muted ${activeSection === tab.id ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+								class={`flex w-full flex-col items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium transition-colors hover:bg-muted ${activeSection === tab.id ? 'text-accent' : 'text-muted-foreground hover:text-accent'}`}
 							>
 								<span>{tab.label}</span>
 								<span
-									class={`h-[3px] w-6 rounded-full bg-foreground transition-opacity ${activeSection === tab.id ? 'opacity-100' : 'opacity-0'}`}
+									class={`h-[3px] w-6 rounded-full bg-accent transition-opacity ${activeSection === tab.id ? 'opacity-100' : 'opacity-0'}`}
 								></span>
 							</button>
 						</li>
@@ -371,17 +371,7 @@
 		height: 100svh;
 		overflow-y: auto;
 		scroll-behavior: smooth;
-
-		/* Override the background gradient to make it change as you scroll */
-		background:
-			linear-gradient(
-				120deg,
-				hsla(130, 100%, 95%, 1) 0%,
-				hsla(236, 100%, 97%, 1) 45%,
-				hsla(351, 100%, 93%, 1) 100%
-			);
-
-		background-attachment: local;
+		background: var(--background);
 	}
 
 	.main-page :global(section[id]) {

@@ -30,10 +30,10 @@
 	<div class="my-4 grid gap-3 sm:grid-cols-2">
 		{#each events as event (event.kind)}
 			<SurfaceCard class="p-5">
-				<p class="text-muted-foreground text-xs font-semibold uppercase tracking-wide">
+				<p class="text-accent text-xs font-semibold uppercase tracking-widest">
 					{event.kind}
 				</p>
-				<p class="mt-2 text-2xl font-extrabold tracking-tight">{event.time}</p>
+				<p class="mt-2 font-serif text-4xl font-medium tracking-tight">{event.time}</p>
 				<p class="mt-1 font-semibold">{event.place}</p>
 				<p class="text-muted-foreground text-sm">{event.address}</p>
 			</SurfaceCard>
@@ -45,7 +45,7 @@
 			href={mapHref}
 			target="_blank"
 			rel="noreferrer"
-			class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-foreground px-5 py-3 text-sm font-semibold text-background transition-opacity hover:bg-muted-foreground"
+			class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent"
 		>
 			<Map size={25} />
 			<span>Åpne i kart</span>
@@ -54,7 +54,7 @@
 			href={calendarHref}
 			target="_blank"
 			rel="noreferrer"
-			class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-card border px-5 py-3 text-sm font-semibold hover:bg-muted"
+			class="flex flex-1 items-center justify-center gap-2 rounded-xl border bg-card px-5 py-3 text-sm font-semibold transition-colors hover:border-accent"
 		>
 			<CalendarAdd size={25} />
 			<span>Legg dagen i kalender</span>

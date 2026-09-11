@@ -1,7 +1,6 @@
 <script lang="ts">
 	import Countdown from "../countdown.svelte";
-	import coverPhoto from "$lib/assets/gran-canaria-portrait-square.jpg";
-	// import coverPhoto from "$lib/assets/atumn-walking-square.jpg";
+	import coverPhoto from "$lib/assets/atumn-walking-square.jpg";
 
 	let {
 		showCountDown
@@ -16,18 +15,21 @@
 			class="hero-frame relative mx-auto overflow-hidden bg-cover bg-[center_35%] bg-no-repeat"
 			style="background-image: url({coverPhoto});"
 		>
-			<div class="absolute inset-0 bg-black/40"></div>
-			<div class="hero-content relative z-10 flex flex-col justify-end p-8">
-				<h1 class="inline-flex w-fit flex-col font-script text-white">
-					<span class="hero-title-sm tracking-tight leading-tight">Velkommen til</span>
-					<span class="hero-title-lg tracking-tight leading-tight">Malin & Markus</span>
-					<span class="hero-title-sm tracking-tight leading-tight">sitt bryllup</span>
+			<div
+				class="absolute inset-0 bg-gradient-to-t from-foreground/75 via-foreground/25 to-foreground/10"
+			></div>
+			<div class="hero-content relative z-10 flex flex-col items-center justify-end p-8 text-center">
+				<h1 class="inline-flex w-fit flex-col font-serif text-white">
+					<span class="hero-title-sm leading-tight tracking-tight italic text-white/90">Velkommen til</span>
+					<span class="hero-title-lg leading-tight tracking-tight">Malin & Markus</span>
+					<div class="hero-rule mx-auto my-3 h-px w-32 bg-[#c7ae76]"></div>
+					<span class="hero-title-sm leading-tight tracking-tight italic text-white/90">sitt bryllup</span>
 				</h1>
 			</div>
 		</div>
 	</div>
 
-	<p class="my-4 text-center text-xl font-bold tracking-tight md:text-2xl">Lørdag 31. juli 2027</p>
+	<p class="my-4 text-center font-serif text-2xl font-medium tracking-tight md:text-3xl">Lørdag 31. juli 2027</p>
 
 	{#if showCountDown}
 		<Countdown />

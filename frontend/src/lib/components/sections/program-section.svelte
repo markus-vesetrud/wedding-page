@@ -21,7 +21,7 @@
 	<SurfaceCard class="divide-y overflow-hidden">
 		{#each program as item (item.time + item.name)}
 			<div class="flex items-center gap-4 px-5 py-4">
-				<span class="text-accent-foreground min-w-16 text-lg font-extrabold tracking-tight">{item.time}</span>
+				<span class="text-accent min-w-16 font-serif text-xl font-medium tracking-tight">{item.time}</span>
 				<span class="text-base font-medium">{item.name}</span>
 			</div>
 		{/each}

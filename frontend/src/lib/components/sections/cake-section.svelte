@@ -113,7 +113,7 @@
             <Button type="submit" class="min-w-28 whitespace-nowrap">Legg til</Button>
         </form>
         {#if cakeSuggestionSubmitted}
-            <p class="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+            <p class="text-foreground text-sm font-semibold">
                 ✓ Takk for kakeforslaget! Det dukker opp i lista om vi er enige.
             </p>
         {/if}
@@ -132,7 +132,7 @@
         >
             {#snippet children()}
                 <div class="mb-3 flex gap-2">
-                    <label class="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold {willBakeMyself === false ? 'bg-foreground text-background' : 'border-input bg-background hover:bg-muted'}">
+                    <label class="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold {willBakeMyself === false ? 'border-accent bg-muted text-foreground' : 'border-input bg-background text-muted-foreground hover:border-accent'}">
                         <input
                             type="radio"
                             name="cakeWillBakeMyself"
@@ -143,7 +143,7 @@
                         />
                         Nei
                     </label>
-                    <label class="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold {willBakeMyself === true ? 'bg-foreground text-background' : 'border-input bg-background hover:bg-muted'}">
+                    <label class="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold {willBakeMyself === true ? 'border-accent bg-muted text-foreground' : 'border-input bg-background text-muted-foreground hover:border-accent'}">
                         <input
                             type="radio"
                             name="cakeWillBakeMyself"
