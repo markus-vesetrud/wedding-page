@@ -17,6 +17,7 @@
 	id="program"
 	title="Program"
 	ingress="Tentativt program, vil nok endres etter hvert. Sjekk igjen når det nærmer seg!"
+	tone="muted"
 >
 	<SurfaceCard class="divide-y overflow-hidden">
 		{#each program as item (item.time + item.name)}

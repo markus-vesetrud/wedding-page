@@ -1,12 +1,25 @@
 <script lang="ts">
 	import Countdown from "../countdown.svelte";
-	import coverPhoto from "$lib/assets/atumn-walking-square.jpg";
+	import autumnPhoto from "$lib/assets/atumn-walking-square.jpg";
+	import canariaPhoto from "$lib/assets/gran-canaria-portrait-square.jpg";
 
 	let {
-		showCountDown
+		showCountDown,
+		showCeremonyLine = false,
+		photo = 'autumn',
+		dark = false,
+		eyebrow,
+		tagline = 'gifter seg'
 	}: {
 		showCountDown?: boolean;
+		showCeremonyLine?: boolean;
+		photo?: 'autumn' | 'canaria';
+		dark?: boolean;
+		eyebrow?: string;
+		tagline?: string;
 	} = $props();
+
+	const coverPhoto = $derived(photo === 'canaria' ? canariaPhoto : autumnPhoto);
 </script>
 
 <section id="velkommen">
@@ -16,20 +29,29 @@
 			style="background-image: url({coverPhoto});"
 		>
 			<div
-				class="absolute inset-0 bg-gradient-to-t from-foreground/75 via-foreground/25 to-foreground/10"
+				class={dark
+					? 'absolute inset-0 bg-gradient-to-t from-background/85 via-background/40 to-background/10'
+					: 'absolute inset-0 bg-gradient-to-t from-foreground/75 via-foreground/25 to-foreground/10'}
 			></div>
 			<div class="hero-content relative z-10 flex flex-col items-center justify-end p-8 text-center">
-				<h1 class="inline-flex w-fit flex-col font-serif text-white">
-					<span class="hero-title-sm leading-tight tracking-tight italic text-white/90">Velkommen til</span>
+				<h1 class={`inline-flex w-fit flex-col font-serif ${dark ? 'text-foreground' : 'text-white'}`}>
+					{#if eyebrow}
+						<span class={`hero-title-sm leading-tight tracking-tight italic ${dark ? 'text-[#4a5647]' : 'text-white/90'}`}>{eyebrow}</span>
+					{/if}
 					<span class="hero-title-lg leading-tight tracking-tight">Malin & Markus</span>
 					<div class="hero-rule mx-auto my-3 h-px w-32 bg-[#c7ae76]"></div>
-					<span class="hero-title-sm leading-tight tracking-tight italic text-white/90">sitt bryllup</span>
+					{#if tagline}
+						<span class={`hero-title-sm leading-tight tracking-tight italic ${dark ? 'text-[#4a5647]' : 'text-white/90'}`}>{tagline}</span>
+					{/if}
 				</h1>
 			</div>
 		</div>
 	</div>
 
 	<p class="my-4 text-center font-serif text-2xl font-medium tracking-tight md:text-3xl">Lørdag 31. juli 2027</p>
+	{#if showCeremonyLine}
+		<p class="text-center text-sm font-medium">Vielse kl. 14:00 · Nittedal kirke</p>
+	{/if}
 
 	{#if showCountDown}
 		<Countdown />

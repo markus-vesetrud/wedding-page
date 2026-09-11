@@ -11,10 +11,11 @@
 	import GiftSection from '$lib/components/sections/gift-section.svelte';
 	import CakeSection from '$lib/components/sections/cake-section.svelte';
 	import SpeechSection from '$lib/components/sections/speech-section.svelte';
+	import PhotoSection from '$lib/components/sections/photo-section.svelte';
 	import { captalize } from '$lib/utils/capitalize';
 	import Back from '$lib/components/ui/icon/back.svelte';
 
-	type SectionId = 'velkommen' | 'program' | 'gjester' | 'gaver' | 'kaker' | 'taler';
+	type SectionId = 'velkommen' | 'program' | 'gjester' | 'gaver' | 'kaker' | 'taler' | 'bilder';
 
 	const TAB_STICKY_TOP_PX = 0;
 	const TAB_SCROLL_MARGIN_GAP_PX = 8;
@@ -30,6 +31,7 @@
 		{ id: 'taler', label: 'Taler' },
 		{ id: 'gaver', label: 'Gaver' },
 		{ id: 'kaker', label: 'Kaker' },
+		{ id: 'bilder', label: 'Bilder' },
 		// { id: 'gjester', label: 'Gjesteliste' }
 	];
 
@@ -291,7 +293,7 @@
 		class="mx-auto w-full max-w-2xl px-4 md:px-6 mb-4"
 		style={`--tabs-height: ${tabBarHeightPx}px; --tabs-sticky-top: ${TAB_STICKY_TOP_PX}px; --tabs-scroll-gap: ${TAB_SCROLL_MARGIN_GAP_PX}px;`}
 	>
-		<WelcomeHero showCountDown />
+		<WelcomeHero showCountDown showCeremonyLine />
 
 		<nav bind:this={tabsNavElement} class="sticky top-2 z-30 my-4">
 			<SurfaceCard class="bg-background/90 p-2 backdrop-blur">
@@ -333,7 +335,7 @@
 
 		<WelcomeDetails />
 
-		<div class="space-y-20 mt-20">
+		<div class="mt-12">
 			<ProgramSection />
 			<SpeechSection />
 			<GiftSection
@@ -353,11 +355,17 @@
 				{cakeSuggestionSubmitted}
 				applyModalUpdate={(cake) => applyModalUpdate(cake, 'cakes')}
 			/>
+			<PhotoSection />
 			<!-- <GuestSection
 				{guests}
 				isLoading={!connected}
 			/> -->
 		</div>
+
+		<footer class="mt-4 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen border-t border-border py-12 text-center">
+			<p class="font-serif text-2xl italic">Malin &amp; Markus</p>
+			<p class="mt-1.5 text-sm tracking-wide text-muted-foreground">31. juli 2027 · Nittedal</p>
+		</footer>
 
 	</main>
 </div>
@@ -384,9 +392,5 @@
 
 	.main-page :global(section[id]:not([id='velkommen'])) {
 		scroll-margin-top: calc(var(--tabs-height, 72px) + var(--tabs-sticky-top, 8px) + var(--tabs-scroll-gap, 8px));
-	}
-
-	.main-page :global(main > div > section[id]:last-of-type) {
-		min-height: calc(100svh - var(--tabs-height, 72px) - 8px);
 	}
 </style>

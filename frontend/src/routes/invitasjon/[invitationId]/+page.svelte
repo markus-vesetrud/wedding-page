@@ -19,7 +19,6 @@
 
   const invitationId = $derived(decodeURIComponent(page.params.invitationId ?? ''));
   const mainMenuHref = $derived(`/?invitationId=${encodeURIComponent(invitationId)}`);
-  const weddingDateLabel = 'Lørdag 31. juli 2027, kl. 14:00';
   const answerDeadlineLabel = '1. februar 2027';
 
   let loading = $state(true);
@@ -207,7 +206,7 @@
 </script>
 
 <div class="mx-auto w-full max-w-2xl space-y-6 pb-20 px-4 md:px-6">
-  <WelcomeHero showCountDown />
+  <WelcomeHero photo="canaria" dark />
 
   {#if loading}
     <Card.Root>
@@ -223,12 +222,30 @@
   {:else if invitation}
     <Card.Root>
       <Card.Header>
-        <Card.Title class="text-3xl">Velkommen, {invitation.name}</Card.Title>
+        <Card.Title class="text-3xl">Kjære {invitation.name}</Card.Title>
         <Card.Description>
-          {members.length > 1 ? "Dere" : "Du"} er hjertelig invitert til bryllupet vårt {weddingDateLabel}. Gi oss beskjed under om {members.length > 1 ? "dere" : "du"} kommer - gjerne innen <strong>{answerDeadlineLabel}</strong>.
+          Vi har gleden av å invitere {members.length > 1 ? "dere" : "deg"} til bryllupet vårt! På bryllupssiden finner {members.length > 1 ? "dere" : "du"} program for dagen, veibeskrivelse, gaveliste og alt det praktiske.
         </Card.Description>
       </Card.Header>
     </Card.Root>
+
+    <a
+      href={mainMenuHref}
+      class="flex items-center gap-4 rounded-xl bg-primary p-5 text-primary-foreground transition-colors hover:bg-accent"
+    >
+      <span class="flex h-8 w-8 shrink-0 items-center justify-center">
+        <Gift color="currentColor"/>
+      </span>
+      <span class="flex-1">
+        <span class="block text-lg font-semibold leading-tight">Se bryllupssiden</span>
+        <span class="block text-sm font-medium opacity-90">Program, sted, gaver og kaker</span>
+      </span>
+      <span class="shrink-0"><Forward color="currentColor" size={30}/></span>
+    </a>
+
+    <p class="text-center text-sm text-muted-foreground">
+      Vennligst svar under om {members.length > 1 ? "dere" : "du"} kommer innen <strong>{answerDeadlineLabel}</strong>.
+    </p>
 
     <Card.Root>
       <Card.Header>
@@ -297,8 +314,6 @@
       </Card.Content>
     </Card.Root>
 
-    {/if}
-
     <div class="flex flex-wrap items-center gap-4 rounded-xl border bg-muted p-5">
       <div class="flex-1" style="min-width: 200px;">
         <p class="text-lg font-semibold">Vil dere ha invitasjonen på papir?</p>
@@ -316,15 +331,13 @@
 
     <a
       href={mainMenuHref}
-      class="flex items-center gap-4 rounded-xl bg-primary p-5 text-primary-foreground transition-colors hover:bg-accent"
+      class="flex items-center justify-center gap-2 py-3 text-base font-medium text-foreground transition-colors hover:text-accent"
     >
-      <span class="flex h-8 w-8 shrink-0 items-center justify-center">
-        <Gift color="currentColor"/>
-      </span>
-      <span class="flex-1">
-        <span class="block text-lg font-semibold leading-tight">Program, sted og gaver</span>
-        <span class="block text-sm font-medium opacity-90">Alt det praktiske for dagen</span>
-      </span>
-      <span class="shrink-0"><Forward color="currentColor" size={30}/></span>
+      <span>Se bryllupssiden</span><span class="text-accent">→</span>
     </a>
+
+    <p class="pb-4 text-center font-serif text-xl italic text-muted-foreground">
+      Vi gleder oss til å se dere
+    </p>
+  {/if}
 </div>

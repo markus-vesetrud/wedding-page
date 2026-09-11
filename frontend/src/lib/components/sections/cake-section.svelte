@@ -114,7 +114,7 @@
         </form>
         {#if cakeSuggestionSubmitted}
             <p class="text-foreground text-sm font-semibold">
-                ✓ Takk for kakeforslaget! Det dukker opp i lista om vi er enige.
+                ✓ Takk for kakeforslaget! Det dukker opp i lista om vi er enige
             </p>
         {/if}
 
