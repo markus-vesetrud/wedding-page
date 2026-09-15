@@ -22,7 +22,7 @@
 	const coverPhoto = $derived(photo === 'canaria' ? canariaPhoto : autumnPhoto);
 </script>
 
-<section id="velkommen">
+<section id="velkommen" class="mb-12">
 	<div class="relative mb-4 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen">
 		<div
 			class="hero-frame relative mx-auto overflow-hidden bg-cover bg-[center_35%] bg-no-repeat"

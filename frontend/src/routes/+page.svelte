@@ -5,7 +5,6 @@
 	import { type PublicAppState, type Cake, type WsDeltaType, type Gift, type Guest, type Item, type ListName, type WsDeltaUpdate } from '$shared/types';
 	import WelcomeHero from '$lib/components/sections/welcome-hero.svelte';
 	import WelcomeDetails from '$lib/components/sections/welcome-details.svelte';
-	import SurfaceCard from '$lib/components/surface-card.svelte';
 	import ProgramSection from '$lib/components/sections/program-section.svelte';
 	import GuestSection from '$lib/components/sections/guest-section.svelte';
 	import GiftSection from '$lib/components/sections/gift-section.svelte';
@@ -19,11 +18,6 @@
 
 	const TAB_STICKY_TOP_PX = 0;
 	const TAB_SCROLL_MARGIN_GAP_PX = 8;
-	const TAB_MIN_WIDTH_PX = 120;
-	const TAB_MAX_WIDTH_PX = 170;
-	const TAB_GAP_PX = 8;
-	// Horizontal padding (p-2) + border of the bordered box wrapping the tab list.
-	const TAB_BAR_CHROME_PX = 26;
 
 	const sectionTabs: Array<{ id: SectionId; label: string }> = [
 		{ id: 'velkommen', label: 'Velkommen' },
@@ -57,38 +51,11 @@
 	let tabsNavElement: HTMLElement | null = null;
 	let tabResizeObserver: ResizeObserver | null = null;
 	let tabBarHeightPx = $state(72);
-	let tabItemWidthPx = $state(TAB_MIN_WIDTH_PX);
 	let scrollRafId: number | null = null;
 
 	function syncTabMetrics() {
 		const measuredHeight = tabsNavElement ? Math.ceil(tabsNavElement.getBoundingClientRect().height) : 0;
 		if (measuredHeight > 0) tabBarHeightPx = measuredHeight;
-	}
-
-	function computeTabColumns(containerWidthPx: number): number {
-		const itemCount = sectionTabs.length + (invitationId ? 1 : 0);
-		if (itemCount <= 1) return 1;
-
-		const widthPerColumn = (columns: number) =>
-			(containerWidthPx - TAB_GAP_PX * (columns - 1)) / columns;
-
-		// Prefer 1 row (all tabs in a single row), then 2 rows (items/2 rounded up
-		// columns per row), then 3 rows, picking the first where tabs stay above the
-		// min width. 3 rows is the last resort regardless of width.
-		for (const rows of [1, 2, 3]) {
-			const columns = Math.ceil(itemCount / rows);
-			if (widthPerColumn(columns) >= TAB_MIN_WIDTH_PX) return columns;
-		}
-		return Math.ceil(itemCount / 3);
-	}
-
-	function syncTabColumns() {
-		if (!tabsNavElement) return;
-		const availableWidth = tabsNavElement.getBoundingClientRect().width - TAB_BAR_CHROME_PX;
-		if (availableWidth <= 0) return;
-		const columns = computeTabColumns(availableWidth);
-		const rawItemWidth = (availableWidth - TAB_GAP_PX * (columns - 1)) / columns;
-		tabItemWidthPx = Math.min(TAB_MAX_WIDTH_PX, Math.max(TAB_MIN_WIDTH_PX, rawItemWidth));
 	}
 
 	function stickyOffset() {
@@ -97,7 +64,7 @@
 
 	function updateActiveSectionFromViewport() {
 		if (!scrollContainerElement) return;
-		const focusLine = scrollContainerElement.scrollTop + scrollContainerElement.clientHeight * 0.3
+		const focusLine = scrollContainerElement.scrollTop + scrollContainerElement.clientHeight * 0.275
 		let chosen: SectionId = sectionTabs[0].id;
 
 		for (const tab of sectionTabs) {
@@ -258,13 +225,11 @@
 		if (tabsNavElement) {
 			tabResizeObserver = new ResizeObserver(() => {
 				syncTabMetrics();
-				syncTabColumns();
 			});
 			tabResizeObserver.observe(tabsNavElement);
 		}
 
 		syncTabMetrics();
-		syncTabColumns();
 		scrollContainerElement?.addEventListener('resize', onResize);
 		scrollContainerElement?.addEventListener('scroll', onScroll, { passive: true });
 		queueActiveSectionUpdate();
@@ -295,42 +260,42 @@
 	>
 		<WelcomeHero showCountDown showCeremonyLine />
 
-		<nav bind:this={tabsNavElement} class="sticky top-2 z-30 my-4">
-			<SurfaceCard class="bg-background/90 p-2 backdrop-blur">
-				<ul class="flex flex-wrap justify-center gap-1.5">
-					{#if invitationId}
-						<li style={`flex: 0 0 ${tabItemWidthPx}px;`}>
-							<a
-								href={backToInvitationHref}
-								class="flex w-full flex-col items-center gap-1.5 rounded-md border-2 ps-1 pe-2 py-1 text-sm font-medium  hover:bg-muted"
-							>
-								<div class="flex flex-1 items-center justify-center gap-1">
-									<span><Back size={20}/></span><span>Invitasjon</span>
-								</div>
-							</a>
-						</li>
-					{/if}
+		<nav
+			bind:this={tabsNavElement}
+			class="sticky top-0 z-30 mb-4 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen border-y border-border bg-muted/90 backdrop-blur"
+		>
+			<div class="mx-auto flex w-full max-w-2xl items-stretch gap-2 px-4 py-1.5 md:px-6">
+				{#if invitationId}
+					<a
+						href={backToInvitationHref}
+						class="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium hover:bg-muted"
+					>
+						<Back size={16} /><span>Invitasjon</span>
+					</a>
+					<div class="w-px shrink-0 self-stretch bg-border"></div>
+				{/if}
+				<ul class="flex flex-1 flex-wrap content-start items-start gap-x-0.5 gap-y-1">
 					{#each sectionTabs as tab}
-						<li style={`flex: 0 0 ${tabItemWidthPx}px;`}>
+						<li>
 							<button
 								type="button"
 								onclick={() => scrollToSection(tab.id)}
-								class={`flex w-full flex-col items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium transition-colors hover:bg-muted ${activeSection === tab.id ? 'text-accent' : 'text-muted-foreground hover:text-accent'}`}
+								class={`flex items-center gap-1.5 rounded-md py-1 pl-1.5 pr-[1.125rem] text-left text-xs font-medium whitespace-nowrap transition-colors hover:bg-muted ${activeSection === tab.id ? 'text-accent' : 'text-muted-foreground hover:text-accent'}`}
 							>
-								<span>{tab.label}</span>
 								<span
-									class={`h-[3px] w-6 rounded-full bg-accent transition-opacity ${activeSection === tab.id ? 'opacity-100' : 'opacity-0'}`}
+									class={`h-1.5 w-1.5 shrink-0 rounded-full bg-accent transition-opacity ${activeSection === tab.id ? 'opacity-100' : 'opacity-0'}`}
 								></span>
+								<span>{tab.label}</span>
 							</button>
 						</li>
 					{/each}
 				</ul>
-				{#if !connected || showConnectionStatus}
-					<p class="text-muted-foreground mt-2 text-center text-xs">
-						{connected ? 'Tilkoblet' : 'Kobler til ...'}
-					</p>
-				{/if}
-			</SurfaceCard>
+			</div>
+			{#if !connected || showConnectionStatus}
+				<p class="text-muted-foreground pb-2 text-center text-xs">
+					{connected ? 'Tilkoblet' : 'Kobler til ...'}
+				</p>
+			{/if}
 		</nav>
 
 		<WelcomeDetails />
