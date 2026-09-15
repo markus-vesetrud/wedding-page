@@ -4,18 +4,21 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && npm run copy-assets",
+    "copy-assets": "mkdir -p dist/server/src/assets && cp -r src/assets/. dist/server/src/assets/",
     "start": "node dist/server/src/server.js"
   },
   "dependencies": {
     "@libpdf/core": "^0.4.2",
     "express": "^4.21.2",
+    "qrcode": "^1.5.4",
     "ws": "^8.18.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/express": "^5.0.5",
     "@types/node": "^22.15.21",
+    "@types/qrcode": "^1.5.6",
     "@types/ws": "^8.18.1",
     "typescript": "^5.8.3"
   }

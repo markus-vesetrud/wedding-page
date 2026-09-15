@@ -16,7 +16,8 @@ import {
   promoteCakeSuggestion
 } from './state.js';
 import type { AppState, Guest, ListName, WsDeltaType, WsDeltaUpdate } from '../../shared/types.js';
-import { PDF } from "@libpdf/core";
+import { generateInvitationPdf } from './pdf/invitation.js';
+import { isQrErrorCorrectionLevel } from './pdf/qr.js';
 
 export interface RouteDependencies {
   publicDir: string;
@@ -103,17 +104,49 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
 
 
   app.get('/api/invitations/:id/pdf', async (req: Request<{ id: string }>, res: Response) => {
-    const pdf = PDF.create();
-    const page = pdf.addPage({width: 297, height: 420 });
-    page.drawText('Streaming PDF Example', { x: 50, y: 50, size: 20 })
-    const bytes = await pdf.save();
+    const id = decodeURIComponent(req.params.id);
 
-    res.writeHead(200, {
+    const eccParam = typeof req.query.ecc === 'string' ? req.query.ecc.toUpperCase() : 'M';
+    if (!isQrErrorCorrectionLevel(eccParam)) {
+      res.status(400).json({ error: 'ecc must be one of L, M, Q, H' });
+      return;
+    }
+
+    try {
+      const state = await deps.readState();
+      const invitation = state.invitations.find((invitation) => invitation.id === id);
+      if (!invitation) {
+        res.status(404).json({ error: 'Invitation not found' });
+        return;
+      }
+
+      const host = req.get('host');
+      if (!host) {
+        res.status(500).json({ error: 'Host header is required' });
+        return;
+      }
+      const protocol = req.get('x-forwarded-proto') ?? req.protocol;
+      const qrTargetUrl = `${protocol}://${host}/invitasjon/${encodeURIComponent(invitation.id)}`;
+
+      const bytes = await generateInvitationPdf({
+        invitationName: invitation.name,
+        qrTargetUrl,
+        qrErrorCorrectionLevel: eccParam
+      });
+
+      res.writeHead(200, {
         'Content-disposition': 'attachment; filename="Bryllupsinvitasjon.pdf"',
         'Content-type': 'application/pdf',
-        'Content-length': bytes.length,
-    });
-    res.end(Buffer.from(bytes));
+        'Content-length': bytes.length
+      });
+      res.end(Buffer.from(bytes));
+    } catch (error: unknown) {
+      if (error instanceof HttpError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      res.status(500).json({ error: 'Unexpected error' });
+    }
   });
 
   app.get('/api/admin/cake-suggestions', requireAdmin, async (_req: Request, res: Response) => {
