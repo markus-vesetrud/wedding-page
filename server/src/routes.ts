@@ -16,6 +16,7 @@ import {
   promoteCakeSuggestion
 } from './state.js';
 import type { AppState, Guest, ListName, WsDeltaType, WsDeltaUpdate } from '../../shared/types.js';
+import { PDF } from "@libpdf/core";
 
 export interface RouteDependencies {
   publicDir: string;
@@ -98,6 +99,21 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
       }
       res.status(500).json({ error: 'Unexpected error' });
     }
+  });
+
+
+  app.get('/api/invitations/:id/pdf', async (req: Request<{ id: string }>, res: Response) => {
+    const pdf = PDF.create();
+    const page = pdf.addPage({width: 297, height: 420 });
+    page.drawText('Streaming PDF Example', { x: 50, y: 50, size: 20 })
+    const bytes = await pdf.save();
+
+    res.writeHead(200, {
+        'Content-disposition': 'attachment; filename="Bryllupsinvitasjon.pdf"',
+        'Content-type': 'application/pdf',
+        'Content-length': bytes.length,
+    });
+    res.end(Buffer.from(bytes));
   });
 
   app.get('/api/admin/cake-suggestions', requireAdmin, async (_req: Request, res: Response) => {

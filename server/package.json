@@ -8,6 +8,7 @@
     "start": "node dist/server/src/server.js"
   },
   "dependencies": {
+    "@libpdf/core": "^0.4.2",
     "express": "^4.21.2",
     "ws": "^8.18.0",
     "zod": "^4.4.3"

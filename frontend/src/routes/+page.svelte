@@ -11,7 +11,6 @@
 	import CakeSection from '$lib/components/sections/cake-section.svelte';
 	import SpeechSection from '$lib/components/sections/speech-section.svelte';
 	import PhotoSection from '$lib/components/sections/photo-section.svelte';
-	import { captalize } from '$lib/utils/capitalize';
 	import Back from '$lib/components/ui/icon/back.svelte';
 
 	type SectionId = 'velkommen' | 'program' | 'gjester' | 'gaver' | 'kaker' | 'taler' | 'bilder';

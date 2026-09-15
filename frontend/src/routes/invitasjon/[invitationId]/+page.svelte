@@ -7,6 +7,7 @@
   import { Input } from '$lib/components/ui/input';
 	import Gift from '$lib/components/ui/icon/gift.svelte';
 	import Forward from '$lib/components/ui/icon/forward.svelte';
+	import Download from '$lib/components/ui/icon/download.svelte';
 
   type Member = {
     id: string;
@@ -19,6 +20,7 @@
 
   const invitationId = $derived(decodeURIComponent(page.params.invitationId ?? ''));
   const mainMenuHref = $derived(`/?invitationId=${encodeURIComponent(invitationId)}`);
+  const pdfDownloadHref = $derived(`/api/invitations/${invitationId}/pdf`)
   const answerDeadlineLabel = '1. februar 2027';
 
   let loading = $state(true);
@@ -319,14 +321,13 @@
         <p class="text-lg font-semibold">Vil dere ha invitasjonen på papir?</p>
         <p class="text-muted-foreground text-sm leading-snug">Last ned og skriv ut i A5, til kjøleskapet eller oppslagstavla.</p>
       </div>
-      <button
+      <a
+        href={pdfDownloadHref}
         type="button"
-        disabled
-        title="Kommer snart"
-        class="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground opacity-60 disabled:cursor-not-allowed"
+        class="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-accent hover:text-accent-foreground"
       >
-        <span>↓</span><span>Last ned PDF</span>
-      </button>
+        <Download size={24} /><span>Last ned PDF</span>
+    </a>
     </div>
 
     <a

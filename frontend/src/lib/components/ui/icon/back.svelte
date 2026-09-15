@@ -1,6 +1,6 @@
 <script>
   export let size = undefined;
-  export let color = '#000000';
+  export let color = '#1f3326';
   export let strokeWidth = 0.5;
   export let background = 'transparent';
   export let opacity = 1;
