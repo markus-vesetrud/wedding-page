@@ -25,7 +25,11 @@
 </script>
 
 <div>
-	<p class="mt-12 mb-8 text-sm">Vi gleder oss enormt til å feire dagen sammen med dere! <br/>Her finner dere alt det praktiske, programmet for dagen, og oversikt over gaver og kaker. Ta gjerne en titt rundt :D	</p>
+	<p class="mt-12 mb-8 text-sm">
+		Vi gleder oss enormt til å feire dagen sammen med dere! <br/>
+		Her finner dere alt det praktiske, programmet for dagen, og oversikt over gaveønsker og kaker. 
+		Ta gjerne en titt rundt :D Har du spørsmål, ta kontakt med Malin (400 72 950) eller Markus (948 59 315)
+	</p>
 
 	<div class="my-4 grid gap-3 sm:grid-cols-2">
 		{#each events as event (event.kind)}

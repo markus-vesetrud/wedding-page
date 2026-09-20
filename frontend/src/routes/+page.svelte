@@ -15,9 +15,6 @@
 
 	type SectionId = 'velkommen' | 'program' | 'gjester' | 'gaver' | 'kaker' | 'taler' | 'bilder';
 
-	const TAB_STICKY_TOP_PX = 0;
-	const TAB_SCROLL_MARGIN_GAP_PX = 8;
-
 	const sectionTabs: Array<{ id: SectionId; label: string }> = [
 		{ id: 'velkommen', label: 'Velkommen' },
 		{ id: 'program', label: 'Program' },
@@ -57,13 +54,9 @@
 		if (measuredHeight > 0) tabBarHeightPx = measuredHeight;
 	}
 
-	function stickyOffset() {
-		return tabBarHeightPx + TAB_STICKY_TOP_PX + TAB_SCROLL_MARGIN_GAP_PX;
-	}
-
 	function updateActiveSectionFromViewport() {
 		if (!scrollContainerElement) return;
-		const focusLine = scrollContainerElement.scrollTop + scrollContainerElement.clientHeight * 0.275
+		const focusLine = scrollContainerElement.scrollTop + scrollContainerElement.clientHeight * 0.3
 		let chosen: SectionId = sectionTabs[0].id;
 
 		for (const tab of sectionTabs) {
@@ -91,7 +84,7 @@
 		const containerRect = scrollContainerElement.getBoundingClientRect();
 		const top = sectionRect.top - containerRect.top + scrollContainerElement.scrollTop;
 		if (id === 'velkommen') return top;
-		return top - stickyOffset();
+		return top - tabBarHeightPx;
 
 	}
 
@@ -255,7 +248,7 @@
 <div bind:this={scrollContainerElement} class="main-page">
 	<main
 		class="mx-auto w-full max-w-2xl px-4 md:px-6 mb-4"
-		style={`--tabs-height: ${tabBarHeightPx}px; --tabs-sticky-top: ${TAB_STICKY_TOP_PX}px; --tabs-scroll-gap: ${TAB_SCROLL_MARGIN_GAP_PX}px;`}
+		style={`--tabs-height: ${tabBarHeightPx}px;`}
 	>
 		<WelcomeHero showCountDown showCeremonyLine />
 
@@ -326,7 +319,7 @@
 			/> -->
 		</div>
 
-		<footer class="mt-4 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen border-t border-border py-12 text-center">
+		<footer class="ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen border-t border-border py-20 text-center">
 			<p class="font-serif text-2xl italic">Malin &amp; Markus</p>
 			<p class="mt-1.5 text-sm tracking-wide text-muted-foreground">31. juli 2027 · Nittedal</p>
 		</footer>
@@ -355,6 +348,6 @@
 	}
 
 	.main-page :global(section[id]:not([id='velkommen'])) {
-		scroll-margin-top: calc(var(--tabs-height, 72px) + var(--tabs-sticky-top, 8px) + var(--tabs-scroll-gap, 8px));
+		scroll-margin-top: calc(var(--tabs-height, 88px));
 	}
 </style>

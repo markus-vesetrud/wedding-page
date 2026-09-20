@@ -218,15 +218,17 @@
     <Card.Root>
       <Card.Header>
         <Card.Title>Invitasjon ikke funnet</Card.Title>
-        <Card.Description>Denne invitasjonslenken finnes desverre ikke, klag til Markus for å få svar om du tror det er en feil :D <br/> Du kan uansett gå til hovedsiden under</Card.Description>
+        <Card.Description>Denne invitasjonslenken finnes desverre ikke, klag til Markus om du tror det er en feil :D <br/> Du kan uansett gå til hovedsiden under</Card.Description>
       </Card.Header>
     </Card.Root>
   {:else if invitation}
     <Card.Root>
       <Card.Header>
-        <Card.Title class="text-3xl">Kjære {invitation.name}</Card.Title>
+        <Card.Title class="text-2xl min-[600px]:text-3xl">Kjære {invitation.name}</Card.Title>
         <Card.Description>
-          Vi har gleden av å invitere {members.length > 1 ? "dere" : "deg"} til bryllupet vårt! På bryllupssiden finner {members.length > 1 ? "dere" : "du"} program for dagen, veibeskrivelse, gaveliste og alt det praktiske.
+          Vi har gleden av å invitere {members.length > 1 ? "dere" : "deg"} til bryllupet vårt! 
+          Her kan {members.length > 1 ? "dere" : "du"} svare på om {members.length > 1 ? "dere" : "du"} kommer, helst innen <strong>{answerDeadlineLabel}</strong>. 
+          På bryllupssiden finner {members.length > 1 ? "dere" : "du"} program for dagen, veibeskrivelse, gaveønsker og alt det praktiske
         </Card.Description>
       </Card.Header>
     </Card.Root>
@@ -245,14 +247,9 @@
       <span class="shrink-0"><Forward color="currentColor" size={30}/></span>
     </a>
 
-    <p class="text-center text-sm text-muted-foreground">
-      Vennligst svar under om {members.length > 1 ? "dere" : "du"} kommer innen <strong>{answerDeadlineLabel}</strong>.
-    </p>
-
     <Card.Root>
       <Card.Header>
         <Card.Title>Svar på invitasjonen</Card.Title>
-        <Card.Description>Velg for hver person, og noter eventuelle allergier eller ønsker.</Card.Description>
       </Card.Header>
       <Card.Content>
         {#if members.length === 0}
@@ -334,7 +331,7 @@
       href={mainMenuHref}
       class="flex items-center justify-center gap-2 py-3 text-base font-medium text-foreground transition-colors hover:text-accent"
     >
-      <span>Se bryllupssiden</span><span class="text-accent">→</span>
+      <span>Se bryllupssiden</span><Forward size={16} color="#7a6a43"/>
     </a>
 
     <p class="pb-4 text-center font-serif text-xl italic text-muted-foreground">
