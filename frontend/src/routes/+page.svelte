@@ -222,13 +222,15 @@
 		}
 
 		syncTabMetrics();
-		scrollContainerElement?.addEventListener('resize', onResize);
+		window.addEventListener('resize', onResize);
 		scrollContainerElement?.addEventListener('scroll', onScroll, { passive: true });
+		scrollContainerElement?.addEventListener('scrollend', onScroll, { passive: true });
 		queueActiveSectionUpdate();
 
 		return () => {
-			scrollContainerElement?.removeEventListener('resize', onResize);
+			window.removeEventListener('resize', onResize);
 			scrollContainerElement?.removeEventListener('scroll', onScroll);
+			scrollContainerElement?.removeEventListener('scrollend', onScroll);
 			tabResizeObserver?.disconnect();
 			tabResizeObserver = null;
 			if (scrollRafId !== null) {
@@ -254,7 +256,7 @@
 
 		<nav
 			bind:this={tabsNavElement}
-			class="sticky top-0 z-30 mb-4 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen border-y border-border bg-muted/90 backdrop-blur"
+			class="sticky top-0 z-30 mb-4 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen border-y border-border bg-muted/90 backdrop-blur [transform:translateZ(0)]"
 		>
 			<div class="mx-auto flex w-full max-w-2xl items-stretch gap-2 px-4 py-1.5 md:px-6">
 				{#if invitationId}
