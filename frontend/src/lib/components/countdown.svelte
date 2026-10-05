@@ -28,5 +28,5 @@
     });
 </script>
 
-<p class="text-muted-foreground text-center text-sm tracking-wide">om {countdownText}</p>
+<p class="text-muted-foreground text-center text-md tracking-wide">om {countdownText}</p>
 

@@ -26,7 +26,7 @@
 		<div class="space-y-3">
 			<h2 class={headingClass}>{title}</h2>
 			{#if ingress}
-				<p class="text-muted-foreground text-sm leading-relaxed">{ingress}</p>
+				<p class="text-muted-foreground text-md leading-relaxed">{ingress}</p>
 			{/if}
 		</div>
 

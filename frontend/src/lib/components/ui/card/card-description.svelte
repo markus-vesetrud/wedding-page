@@ -4,6 +4,6 @@
 	let { class: className = '', children, ...restProps } = $props();
 </script>
 
-<p data-slot="card-description" class={cn('text-muted-foreground text-sm leading-relaxed', className)} {...restProps}>
+<p data-slot="card-description" class={cn('text-muted-foreground text-md leading-relaxed', className)} {...restProps}>
 	{@render children?.()}
 </p>

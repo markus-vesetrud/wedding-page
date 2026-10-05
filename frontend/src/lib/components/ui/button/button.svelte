@@ -23,7 +23,7 @@
 	{type}
 	data-slot="button"
 	class={cn(
-		'inline-flex h-10 items-center justify-center rounded-md px-4 text-sm font-medium transition-colors focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50',
+		'inline-flex h-10 items-center justify-center rounded-md px-4 text-md font-medium transition-colors focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50',
 		variantClasses[variant] ?? variantClasses.default,
 		className
 	)}

@@ -79,7 +79,7 @@
 	// ingress="Listen er kun forslag, laget for å unngå at flere gir det samme. Reserver gjerne noe - hvem som har reservert hva holdes skjult for de andre gjestene og brudeparet. Mangler noe? Legg det til nederst. Husk kvittering uansett ;D"
 	tone="muted"
 >
-	<div class="rounded-xl border border-dashed p-8 text-center font-mono text-sm text-muted-foreground">
+	<div class="rounded-xl border border-dashed p-8 text-center font-mono text-md text-muted-foreground">
 		Gavelisten kommer etter hvert, sjekk igjen senere :D
 	</div>
 	<!-- <div class="space-y-3">

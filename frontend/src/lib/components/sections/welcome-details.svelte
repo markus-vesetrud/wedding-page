@@ -25,21 +25,20 @@
 </script>
 
 <div>
-	<p class="mt-12 mb-8 text-sm">
-		Vi gleder oss enormt til å feire dagen sammen med dere! <br/>
-		Her finner dere alt det praktiske, programmet for dagen, og oversikt over gaveønsker og kaker. 
-		Ta gjerne en titt rundt :D Har du spørsmål, ta kontakt med Malin (400 72 950) eller Markus (948 59 315)
+	<p class="mt-12 mb-8 text-md">
+		Vi gleder oss enormt til å feire dagen sammen med deg! <br/>
+		Her finner du alt du lurer på om bryllupet, hvis ikke er det bare å spørre Malin eller Markus direkte
 	</p>
 
 	<div class="my-4 grid gap-3 sm:grid-cols-2">
 		{#each events as event (event.kind)}
 			<SurfaceCard class="p-5">
-				<p class="text-accent text-xs font-semibold uppercase tracking-widest">
+				<p class="text-accent text-sm font-semibold uppercase tracking-widest">
 					{event.kind}
 				</p>
-				<p class="mt-2 font-serif text-4xl font-medium tracking-tight">{event.time}</p>
+				<p class="mt-2 font-serif text-3xl font-medium tracking-tight">{event.time}</p>
 				<p class="mt-1 font-semibold">{event.place}</p>
-				<p class="text-muted-foreground text-sm">{event.address}</p>
+				<p class="text-muted-foreground text-md">{event.address}</p>
 			</SurfaceCard>
 		{/each}
 	</div>

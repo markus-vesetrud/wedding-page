@@ -297,7 +297,7 @@
 					<a
 						bind:this={invitationLinkElement}
 						href={backToInvitationHref}
-						class="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium hover:bg-muted"
+						class="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-sm font-medium hover:bg-card"
 					>
 						<Back size={16} /><span>Invitasjon</span>
 					</a>
@@ -314,7 +314,7 @@
 							<button
 								type="button"
 								onclick={() => scrollToSection(tab.id)}
-								class={`flex items-center gap-1.5 rounded-md py-1 pl-1.5 pr-[1.125rem] text-left text-xs font-medium whitespace-nowrap transition-colors hover:bg-muted ${activeSection === tab.id ? 'text-accent' : 'text-muted-foreground hover:text-accent'}`}
+								class={`flex items-center gap-1.5 rounded-md py-1 pl-1.5 pr-[1.125rem] text-left text-sm font-medium whitespace-nowrap transition-colors hover:bg-card ${activeSection === tab.id ? 'text-accent' : 'text-muted-foreground hover:text-accent'}`}
 							>
 								<span
 									class={`h-1.5 w-1.5 shrink-0 rounded-full bg-accent transition-opacity ${activeSection === tab.id ? 'opacity-100' : 'opacity-0'}`}
@@ -358,7 +358,7 @@
 
 		<footer class="ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen border-t border-border py-20 text-center">
 			<p class="font-serif text-2xl italic">Malin &amp; Markus</p>
-			<p class="mt-1.5 text-sm tracking-wide text-muted-foreground">31. juli 2027 · Nittedal</p>
+			<p class="mt-1.5 text-md tracking-wide text-muted-foreground">31. juli 2027 · Nittedal</p>
 		</footer>
 
 	</main>

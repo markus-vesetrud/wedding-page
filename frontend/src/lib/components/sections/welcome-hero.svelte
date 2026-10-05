@@ -43,7 +43,7 @@
 	</div>
 
 	{#if showCeremonyLine}
-		<p class="text-center text-sm font-medium">Vielse kl. 14:00 · Nittedal kirke</p>
+		<p class="text-center text-md font-medium">Vielse kl. 14:00 · Nittedal kirke</p>
 	{/if}
 
 	{#if showCountDown}

@@ -311,8 +311,8 @@
         <Card.Title class="text-2xl min-[600px]:text-3xl">Kjære {invitation.name}</Card.Title>
         <Card.Description class="text-md">
           Vi har gleden av å invitere {titulation} til bryllupet vårt! 
-          Her kan {addressSubject} svare på om {addressSubject} kommer, helst innen <strong>{answerDeadlineLabel}</strong>. 
-          På bryllupssiden finner {addressSubject} program for dagen, veibeskrivelse, gaveønsker og alt det praktiske
+          Her kan {addressSubject} svare på om {addressSubject} kommer, helst innen <strong>{answerDeadlineLabel}</strong>.
+          Mer informasjon finnes på bryllupssida
         </Card.Description>
       </Card.Header>
     </Card.Root>
@@ -325,7 +325,7 @@
         <Gift color="currentColor"/>
       </span>
       <span class="flex-1">
-        <span class="block text-lg font-semibold leading-tight">Se bryllupssiden</span>
+        <span class="block text-lg font-semibold leading-tight">Se bryllupssida</span>
         <span class="block text-sm font-medium opacity-90">Program, sted, gaver og kaker</span>
       </span>
       <span class="shrink-0"><Forward color="currentColor" size={30}/></span>

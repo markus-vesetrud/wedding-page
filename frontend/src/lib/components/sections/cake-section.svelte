@@ -83,7 +83,7 @@
 <SectionShell
     id="kaker"
     title="Kaker"
-    ingress="Se hvem som baker hva og hvilke kaker vi fortsatt ønsker oss. Vi tar gjerne imot kakeforslag, de sendes til oss først, og dukker opp i lista om vi er enige"
+    ingress="Se hvem som baker hva og hvilke kaker vi fortsatt ønsker oss"
 >
     <div class="space-y-4">
         <AnimatedList items={sortedCakes} {isLoading} emptyText="Ingen kaker i listen ennå." loadingCount={4}>
@@ -96,6 +96,9 @@
                 />
             {/snippet}
         </AnimatedList>
+        <p>
+            Lyst på noe mer? Vi tar gjerne imot kakeforslag, de sendes til oss først, og dukker opp i lista om vi er enige :D
+        </p>
         <form
             class="flex flex-col gap-3 sm:flex-row"
             onsubmit={(e) => {
@@ -113,8 +116,8 @@
             <Button type="submit" class="min-w-28 whitespace-nowrap">Legg til</Button>
         </form>
         {#if cakeSuggestionSubmitted}
-            <p class="text-foreground text-sm font-semibold">
-                ✓ Takk for kakeforslaget! Det dukker opp i lista om vi er enige
+            <p class="text-foreground text-md font-semibold">
+                ✓ Takk for kakeforslaget!
             </p>
         {/if}
 
@@ -132,7 +135,7 @@
         >
             {#snippet children()}
                 <div class="mb-3 flex gap-2">
-                    <label class="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold {willBakeMyself === false ? 'border-accent bg-muted text-foreground' : 'border-input bg-background text-muted-foreground hover:border-accent'}">
+                    <label class="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-md font-semibold {willBakeMyself === false ? 'border-accent bg-muted text-foreground' : 'border-input bg-background text-muted-foreground hover:border-accent'}">
                         <input
                             type="radio"
                             name="cakeWillBakeMyself"
@@ -143,7 +146,7 @@
                         />
                         Nei
                     </label>
-                    <label class="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-sm font-semibold {willBakeMyself === true ? 'border-accent bg-muted text-foreground' : 'border-input bg-background text-muted-foreground hover:border-accent'}">
+                    <label class="flex flex-1 items-center justify-center gap-2 rounded-lg border-2 px-3 py-2 text-md font-semibold {willBakeMyself === true ? 'border-accent bg-muted text-foreground' : 'border-input bg-background text-muted-foreground hover:border-accent'}">
                         <input
                             type="radio"
                             name="cakeWillBakeMyself"
@@ -154,7 +157,7 @@
                         Ja
                     </label>
                 </div>
-                <label class="text-sm font-medium" for="inputAddBakerName">Navnet ditt</label>
+                <label class="text-md font-medium" for="inputAddBakerName">Navnet ditt</label>
                 <Input
                     id="inputAddBakerName"
                     type="text"
@@ -185,7 +188,7 @@
 				onClose={closeModal}
 			>
 				{#snippet children()}
-					<label class="text-sm font-medium" for="inputBakerName">Navnet ditt</label>
+					<label class="text-md font-medium" for="inputBakerName">Navnet ditt</label>
                     <Input
                         id="inputBakerName"
                         type="text"
