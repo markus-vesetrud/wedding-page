@@ -15,7 +15,8 @@
         const days = Math.floor(diff / 1000 / 60 / 60 / 24);
         const hours = Math.floor((diff / 1000 / 60 / 60) % 24);
         const minutes = Math.floor((diff / 1000 / 60) % 60);
-        countdownText = `${days} dager, ${hours} timer og ${minutes} minutter`;
+        const seconds = Math.floor((diff / 1000) % 60);
+        countdownText = `${days} dager, ${hours} timer, ${minutes} minutter og ${seconds} sekunder`;
     }
 
     onMount(() => {
