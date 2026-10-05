@@ -207,9 +207,9 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   app.post('/api/admin/invitations', requireAdmin, async (req: Request, res: Response) => {
     try {
       const invitation = await withMutationLock(async () => {
-        const { name, guestNames, plusOneText } = parseCreateInvitationBody(req.body);
+        const { name, guestNames, plusOneText, titulation } = parseCreateInvitationBody(req.body);
         const state = await deps.readState();
-        const created = createInvitationWithGuests(state, name, guestNames, plusOneText);
+        const created = createInvitationWithGuests(state, name, guestNames, { plusOneText, titulation });
         await deps.writeState(state);
         return created;
       });

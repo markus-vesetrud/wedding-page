@@ -34,6 +34,10 @@
   let savedPlusOneKey = '';
   let savingPlusOne = false;
   let plusOneAutosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  // How the invitees are addressed as subject (du/dere) and object (deg/dere)
+  const addressSubject = $derived(members.length + (plusOneEnabled ? 1 : 0) > 1 ? 'dere' : 'du');
+  const addressObject = $derived(members.length + (plusOneEnabled ? 1 : 0) > 1 ? 'dere' : 'deg');
+  const titulation = $derived(invitation?.titulation ?? addressObject);
   let error = $state('');
   let saving = $state(false);
   let savedRecently = $state(false);
@@ -304,9 +308,9 @@
       <Card.Header>
         <Card.Title class="text-2xl min-[600px]:text-3xl">Kjære {invitation.name}</Card.Title>
         <Card.Description class="text-md">
-          Vi har gleden av å invitere {members.length > 1 ? "dere" : "deg"} til bryllupet vårt! 
-          Her kan {members.length > 1 ? "dere" : "du"} svare på om {members.length > 1 ? "dere" : "du"} kommer, helst innen <strong>{answerDeadlineLabel}</strong>. 
-          På bryllupssiden finner {members.length > 1 ? "dere" : "du"} program for dagen, veibeskrivelse, gaveønsker og alt det praktiske
+          Vi har gleden av å invitere {titulation} til bryllupet vårt! 
+          Her kan {addressSubject} svare på om {addressSubject} kommer, helst innen <strong>{answerDeadlineLabel}</strong>. 
+          På bryllupssiden finner {addressSubject} program for dagen, veibeskrivelse, gaveønsker og alt det praktiske
         </Card.Description>
       </Card.Header>
     </Card.Root>
@@ -443,7 +447,7 @@
 
     <div class="flex flex-wrap items-center gap-4 rounded-xl border bg-muted p-5">
       <div class="flex-1" style="min-width: 200px;">
-        <p class="text-lg font-semibold">Vil dere ha invitasjonen på papir?</p>
+        <p class="text-lg font-semibold">Vil {addressSubject} ha invitasjonen på papir?</p>
         <p class="text-muted-foreground text-sm leading-snug">Last ned og skriv ut i A5, til kjøleskapet eller oppslagstavla.</p>
       </div>
       <a
@@ -463,7 +467,7 @@
     </a>
 
     <p class="pb-4 text-center font-serif text-xl italic text-muted-foreground">
-      Vi gleder oss til å se dere
+      Vi gleder oss til å se {addressObject}
     </p>
   {/if}
 </div>

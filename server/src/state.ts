@@ -94,7 +94,8 @@ const InvitationSchema = z
     name: z.string().trim().min(1),
     guestIds: z.array(z.string()),
     visitedAt: z.array(z.string()),
-    plusOneText: z.string().nullable()
+    plusOneText: z.string().nullable(),
+    titulation: z.string().nullable()
   })
   .strict() satisfies z.ZodType<Invitation>;
 
@@ -146,7 +147,8 @@ const CreateInvitationBodySchema = z
   .object({
     name: z.string().trim().min(1),
     guestNames: z.array(z.string().trim().min(1)).min(1),
-    plusOneText: z.string().trim().nullable().optional()
+    plusOneText: z.string().trim().nullable().optional(),
+    titulation: z.string().trim().nullable().optional()
   })
   .strict();
 
@@ -178,6 +180,7 @@ export function parseCreateInvitationBody(body: unknown): {
   name: string;
   guestNames: string[];
   plusOneText?: string | null;
+  titulation?: string | null;
 } {
   return parseWithSchema(CreateInvitationBodySchema, body, 'body');
 }
@@ -487,8 +490,8 @@ export function migrateLegacyRecord(raw: unknown, list: 'gifts' | 'cakes' | 'gue
 }
 
 export function migrateLegacyInvitation(raw: unknown): unknown {
-  if (!isRecord(raw) || 'plusOneText' in raw) return raw;
-  return { ...raw, plusOneText: null };
+  if (!isRecord(raw)) return raw;
+  return { plusOneText: null, titulation: null, ...raw };
 }
 
 export function parseLegacyAwareListEntries(
@@ -522,14 +525,15 @@ export function createInvitationWithGuests(
   state: AppState,
   invitationName: string,
   guestNames: string[],
-  plusOneText?: string | null
+  options: { plusOneText?: string | null; titulation?: string | null } = {}
 ): Invitation {
   const invitation: Invitation = {
     id: makeId(),
     name: invitationName,
     guestIds: [],
     visitedAt: [],
-    plusOneText: plusOneText?.trim() || null
+    plusOneText: options.plusOneText?.trim() || null,
+    titulation: options.titulation?.trim() || null
   };
 
   for (const guestName of guestNames) {

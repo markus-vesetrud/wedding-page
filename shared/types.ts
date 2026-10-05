@@ -40,6 +40,8 @@ export interface Invitation {
   visitedAt: string[];
   /** Personal text offering a plus-one; null when the invitation has no plus-one */
   plusOneText: string | null;
+  /** Replaces the default du/deg/dere when addressing the invitees, e.g. "tante Liv"; null uses the default */
+  titulation: string | null;
 }
 
 /** State broadcast to all connected clients — excludes unreviewed cake suggestions, which are admin-only. */

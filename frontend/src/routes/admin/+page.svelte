@@ -24,6 +24,7 @@
 	let invitationName = $state('');
 	let guestNameInputs = $state<string[]>(['']);
 	let plusOneText = $state('');
+	let titulation = $state('');
 	let creatingInvitation = $state(false);
 	let invitationFormError = $state('');
 	let createdInvitations = $state<{ id: string; name: string; guestCount: number; link: string }[]>([]);
@@ -135,7 +136,9 @@
 			const res = await fetch('/api/admin/invitations', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json', ...adminHeaders() },
-				body: JSON.stringify({ name, guestNames, plusOneText: plusOneText.trim() || null })
+				body: JSON.stringify({ name, guestNames, plusOneText: plusOneText.trim() || null,
+					titulation: titulation.trim() || null
+				})
 			});
 
 			if (res.status === 401) {
@@ -162,6 +165,7 @@
 			invitationName = '';
 			guestNameInputs = [''];
 			plusOneText = '';
+			titulation = '';
 		} catch (e) {
 			invitationFormError = e instanceof Error ? e.message : 'Klarte ikke å opprette invitasjonen.';
 		} finally {
@@ -425,6 +429,17 @@
 							</div>
 						{/each}
 						<Button type="button" variant="outline" onclick={addGuestInputRow}>+ Legg til gjest</Button>
+					</div>
+
+					<div class="space-y-1">
+						<label class="text-sm font-medium" for="titulation">Tiltale (valgfritt)</label>
+						<Input
+							id="titulation"
+							type="text"
+							value={titulation}
+							oninput={(e: Event) => (titulation = (e.currentTarget as HTMLInputElement).value)}
+							placeholder="Erstatter deg/dere i teksten, f. eks. deg og Tom"
+						/>
 					</div>
 
 					<div class="space-y-1">
