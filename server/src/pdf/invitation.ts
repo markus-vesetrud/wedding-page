@@ -1,4 +1,4 @@
-import { PDF, rgb, type Color } from '@libpdf/core';
+import { PDF, ops, rgb, type Color, type PDFPage } from '@libpdf/core';
 import { fontBytes, frontImageBytes, backImageBytes } from './assets.js';
 import { createVerticalGradientImage, drawCoverImage, drawGradientOverlay, drawTrackedTextCentered, hex, mm, type GradientStop } from './draw-helpers.js';
 import { renderQrCodePng, type QrErrorCorrectionLevel } from './qr.js';
@@ -10,7 +10,7 @@ const WEDDING = {
   ceremonyTime: 'Vielse kl. 14:00',
   ceremonyLocation: 'Nittedal kirke, Kirkeveien 121, 1480 Slattum',
   rsvpDeadline: 'Svar innen 1. februar 2027',
-  qrHelpText: 'Skann koden for deres personlige invitasjon.',
+  qrHelpText: (plural: boolean) => `Skann koden for ${plural ? 'deres' : 'din'} personlige invitasjon.`,
   dateBadge: '31 · 07 · 2027'
 };
 
@@ -51,15 +51,30 @@ const ASCENT_RATIO = 0.78;
 export interface InvitationPdfOptions {
   /** Displayed as the addressee, e.g. "Anne og Per Hansen". */
   invitationName: string;
+  /** Whether the invitation is for several guests, choosing "deres" over "din". */
+  plural: boolean;
   /** Full URL encoded into the QR code, e.g. https://bryllup.example.no/invitasjon/abc123. */
   qrTargetUrl: string;
   /** QR code redundancy / error-correction level. Higher survives more damage but is denser. */
   qrErrorCorrectionLevel: QrErrorCorrectionLevel;
+  /**
+   * `a5`: one A5 card per page. `a4`: the card on the left half of an A4 landscape page, for
+   * printing on A4 and cutting out. The back is rotated 180° so that it lands behind the front
+   * when duplex-printed with "flip on long edge" (the printer default).
+   */
+  layout: InvitationPdfLayout;
+}
+
+export type InvitationPdfLayout = 'a5' | 'a4';
+
+export function isInvitationPdfLayout(value: string): value is InvitationPdfLayout {
+  return value === 'a5' || value === 'a4';
 }
 
 export async function generateInvitationPdf(options: InvitationPdfOptions): Promise<Uint8Array> {
   const width = mm(148);
   const height = mm(210);
+  const pageSize = options.layout === 'a4' ? { width: mm(297), height } : { width, height };
 
   const pdf = PDF.create();
   const cormorant = pdf.embedFont(fontBytes.cormorantRegular);
@@ -74,26 +89,55 @@ export async function generateInvitationPdf(options: InvitationPdfOptions): Prom
   const qrPng = await renderQrCodePng(options.qrTargetUrl, options.qrErrorCorrectionLevel);
   const qrImage = pdf.embedPng(qrPng);
 
-  drawFrontPage(pdf.addPage({ width, height }), {
+  const frontPage = addPage(pdf, pageSize);
+  drawFrontPage(frontPage, {
     width,
     height,
     backgroundImage: frontImage,
     overlayImage: frontOverlay,
     qrImage,
     invitationName: options.invitationName,
+    plural: options.plural,
     qrTargetUrl: options.qrTargetUrl,
     fonts: { cormorant, cormorantItalic, karla, karlaSemiBold }
   });
 
-  drawBackPage(pdf.addPage({ width, height }), {
+  const backPage = addPage(pdf, pageSize);
+  // On A4, long-edge duplexing a landscape page mirrors it top-to-bottom, so the back is drawn
+  // upside down in the same half to end up behind the front, the right way round
+  const backTransform = options.layout === 'a4' ? ([-1, 0, 0, -1, width, height] as const) : null;
+  withTransform(backPage, backTransform, () => drawBackPage(backPage, {
     width,
     height,
     backgroundImage: backImage,
     overlayImage: backOverlay,
     fonts: { cormorant, karlaSemiBold }
-  });
+  }));
 
   return pdf.save();
+}
+
+/**
+ * @libpdf/core wraps a page's first content stream in q/Q the first time more content is
+ * appended, which would discard any clip or transform pushed by that first stream. Starting
+ * with an empty stream makes that wrapping harmless.
+ */
+function addPage(pdf: PDF, size: { width: number; height: number }): PDFPage {
+  const page = pdf.addPage(size);
+  page.drawOperators([]);
+  return page;
+}
+
+type Matrix = readonly [number, number, number, number, number, number];
+
+function withTransform(page: PDFPage, matrix: Matrix | null, draw: () => void): void {
+  if (!matrix) {
+    draw();
+    return;
+  }
+  page.drawOperators([ops.pushGraphicsState(), ops.concatMatrix(...matrix)]);
+  draw();
+  page.drawOperators([ops.popGraphicsState()]);
 }
 
 interface FrontPageParams {
@@ -103,6 +147,7 @@ interface FrontPageParams {
   overlayImage: import('@libpdf/core').PDFImage;
   qrImage: import('@libpdf/core').PDFImage;
   invitationName: string;
+  plural: boolean;
   qrTargetUrl: string;
   fonts: {
     cormorant: import('@libpdf/core').EmbeddedFont;
@@ -113,7 +158,7 @@ interface FrontPageParams {
 }
 
 function drawFrontPage(page: import('@libpdf/core').PDFPage, params: FrontPageParams): void {
-  const { width, height, backgroundImage, overlayImage, qrImage, invitationName, qrTargetUrl, fonts } = params;
+  const { width, height, backgroundImage, overlayImage, qrImage, invitationName, plural, qrTargetUrl, fonts } = params;
   const marginX = mm(14);
   const centerX = width / 2;
   const hostLabel = new URL(qrTargetUrl).toString().split("://", 2)[1]
@@ -121,7 +166,7 @@ function drawFrontPage(page: import('@libpdf/core').PDFPage, params: FrontPagePa
   drawCoverImage(page, backgroundImage, { x: 0, y: 0, width, height }, { x: 0.5, y: 0.4 });
   drawGradientOverlay(page, overlayImage, { x: 0, y: 0, width, height });
 
-  // --- "Invitasjon til <name>" box ---
+  // --- "Kjære <name>" box ---
   const topBorderY = height - mm(13);
   const labelSize = 7.5;
   const labelLineHeight = labelSize * 1.2;
@@ -136,7 +181,7 @@ function drawFrontPage(page: import('@libpdf/core').PDFPage, params: FrontPagePa
   page.drawLine({ start: { x: marginX, y: bottomBorderY }, end: { x: width - marginX, y: bottomBorderY }, color: COLOR.cream, opacity: 0.6, thickness: 1 });
 
   let cursor = topBorderY - boxPadding;
-  drawTrackedTextCentered(page, 'INVITASJON TIL', {
+  drawTrackedTextCentered(page, 'KJÆRE', {
     centerX,
     y: cursor - labelSize * ASCENT_RATIO,
     font: fonts.karlaSemiBold,
@@ -280,7 +325,7 @@ function drawFrontPage(page: import('@libpdf/core').PDFPage, params: FrontPagePa
 
   const descSize = 9.5;
   const descLineHeight = descSize * 1.5;
-  page.drawText(WEDDING.qrHelpText, {
+  page.drawText(WEDDING.qrHelpText(plural), {
     x: textX,
     y: textCursor - descSize * ASCENT_RATIO,
     maxWidth: textMaxWidth,

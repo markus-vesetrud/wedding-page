@@ -21,7 +21,9 @@
 
   const invitationId = $derived(decodeURIComponent(page.params.invitationId ?? ''));
   const mainMenuHref = $derived(`/?invitationId=${encodeURIComponent(invitationId)}`);
-  const pdfDownloadHref = $derived(`/api/invitations/${invitationId}/pdf`)
+  const pdfLayouts = ['a5', 'a4'] as const;
+  let pdfLayout = $state<(typeof pdfLayouts)[number]>('a5');
+  const pdfDownloadHref = $derived(`/api/invitations/${invitationId}/pdf?layout=${pdfLayout}`)
   const answerDeadlineLabel = '1. februar 2027';
 
   let loading = $state(true);
@@ -448,15 +450,29 @@
     <div class="flex flex-wrap items-center gap-4 rounded-xl border bg-muted p-5">
       <div class="flex-1" style="min-width: 200px;">
         <p class="text-lg font-semibold">Vil {addressSubject} ha invitasjonen på papir?</p>
-        <p class="text-muted-foreground text-sm leading-snug">Last ned og skriv ut i A5, til kjøleskapet eller oppslagstavla.</p>
+        <p class="text-muted-foreground text-sm leading-snug">Roter arket på langsida. Velger du A4, så klipp bort den ubrukte delen</p>
       </div>
-      <a
-        href={pdfDownloadHref}
-        type="button"
-        class="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-accent hover:text-accent-foreground"
-      >
-        <Download size={24} /><span>Last ned PDF</span>
-    </a>
+      <div class="flex shrink-0 items-center gap-3">
+        <div role="radiogroup" aria-label="Papirstørrelse" class="flex rounded-xl border-2 border-input bg-background p-1">
+          {#each pdfLayouts as layout (layout)}
+            <button
+              type="button"
+              role="radio"
+              aria-checked={pdfLayout === layout}
+              onclick={() => (pdfLayout = layout)}
+              class={`rounded-lg px-3 py-2 text-sm transition-colors ${pdfLayout === layout ? 'bg-muted font-semibold text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {layout.toUpperCase()}
+            </button>
+          {/each}
+        </div>
+        <a
+          href={pdfDownloadHref}
+          class="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-accent hover:text-accent-foreground"
+        >
+          <Download size={24} /><span>Last ned PDF</span>
+        </a>
+      </div>
     </div>
 
     <a

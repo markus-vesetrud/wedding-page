@@ -19,7 +19,7 @@ import {
   setInvitationPlusOne
 } from './state.js';
 import type { AppState, Guest, ListName, WsDeltaType, WsDeltaUpdate } from '../../shared/types.js';
-import { generateInvitationPdf } from './pdf/invitation.js';
+import { generateInvitationPdf, isInvitationPdfLayout } from './pdf/invitation.js';
 import { isQrErrorCorrectionLevel } from './pdf/qr.js';
 
 export interface RouteDependencies {
@@ -149,6 +149,12 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
       return;
     }
 
+    const layoutParam = typeof req.query.layout === 'string' ? req.query.layout.toLowerCase() : 'a5';
+    if (!isInvitationPdfLayout(layoutParam)) {
+      res.status(400).json({ error: 'layout must be a5 or a4' });
+      return;
+    }
+
     try {
       const state = await deps.readState();
       const invitation = state.invitations.find((invitation) => invitation.id === id);
@@ -167,12 +173,15 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
 
       const bytes = await generateInvitationPdf({
         invitationName: invitation.name,
+        // Matches the invitation page, which says "dere" for more than one guest
+        plural: invitation.guestIds.filter((guestId) => state.guests.some((guest) => guest.id === guestId)).length > 1,
         qrTargetUrl,
-        qrErrorCorrectionLevel: eccParam
+        qrErrorCorrectionLevel: eccParam,
+        layout: layoutParam
       });
 
       res.writeHead(200, {
-        'Content-disposition': 'attachment; filename="Bryllupsinvitasjon.pdf"',
+        'Content-disposition': `attachment; filename="Bryllupsinvitasjon${layoutParam === 'a4' ? '-A4' : ''}.pdf"`,
         'Content-type': 'application/pdf',
         'Content-length': bytes.length
       });
