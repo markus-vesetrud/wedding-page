@@ -35,23 +35,61 @@
 	let cakes = $state<Cake[]>([]);
 	let connected = $state(false);
 	let activeSection = $state<SectionId>('velkommen');
-	let showConnectionStatus = $state(true);
 	let newGift = $state('');
 	let newCake = $state('');
 	let cakeSuggestionSubmitted = $state(false);
 	let cakeSuggestionSubmittedTimer: ReturnType<typeof setTimeout> | null = null;
 
 	let ws: ReturnType<typeof createWebSocket> | null = null;
-	let hideConnectionStatusTimer: ReturnType<typeof setTimeout> | null = null;
 	let scrollContainerElement: HTMLElement | null = null;
 	let tabsNavElement: HTMLElement | null = null;
 	let tabResizeObserver: ResizeObserver | null = null;
+	let tabsRowElement: HTMLElement | null = null;
+	let invitationLinkElement = $state<HTMLElement | null>(null);
+	let tabListElement: HTMLElement | null = null;
 	let tabBarHeightPx = $state(72);
+	let stackInvitationLink = $state(false);
 	let scrollRafId: number | null = null;
+
+	// Move the invitation link above the tabs once the tabs beside it would wrap to this many rows
+	const STACK_AT_TAB_ROWS = 3;
 
 	function syncTabMetrics() {
 		const measuredHeight = tabsNavElement ? Math.ceil(tabsNavElement.getBoundingClientRect().height) : 0;
 		if (measuredHeight > 0) tabBarHeightPx = measuredHeight;
+		syncInvitationLinkPlacement();
+	}
+
+	function syncInvitationLinkPlacement() {
+		if (!tabsRowElement || !invitationLinkElement || !tabListElement) {
+			stackInvitationLink = false;
+			return;
+		}
+
+		// Simulate wrapping the tabs into the width they would get beside the link
+		const rowStyle = getComputedStyle(tabsRowElement);
+		const rowGap = parseFloat(rowStyle.columnGap) || 0;
+		const contentWidth =
+			tabsRowElement.clientWidth - parseFloat(rowStyle.paddingLeft) - parseFloat(rowStyle.paddingRight);
+		const dividerWidth = 1;
+		const availableWidth =
+			contentWidth - invitationLinkElement.getBoundingClientRect().width - dividerWidth - rowGap * 2;
+
+		const tabGap = parseFloat(getComputedStyle(tabListElement).columnGap) || 0;
+		let rows = 1;
+		let lineWidth = 0;
+		for (const tab of tabListElement.children) {
+			const tabWidth = tab.getBoundingClientRect().width;
+			const nextWidth = lineWidth === 0 ? tabWidth : lineWidth + tabGap + tabWidth;
+			if (lineWidth > 0 && nextWidth > availableWidth) {
+				rows += 1;
+				lineWidth = tabWidth;
+			} else {
+				lineWidth = nextWidth;
+			}
+		}
+
+		stackInvitationLink = rows >= STACK_AT_TAB_ROWS;
 	}
 
 	function updateActiveSectionFromViewport() {
@@ -200,14 +238,7 @@
 				guests = state.guests ?? [];
 				cakes = state.cakes ?? [];
 				connected = true;
-				showConnectionStatus = true;
 				requestAnimationFrame(syncTabMetrics);
-				if (hideConnectionStatusTimer) clearTimeout(hideConnectionStatusTimer);
-				hideConnectionStatusTimer = setTimeout(() => {
-					showConnectionStatus = false;
-					syncTabMetrics();
-					hideConnectionStatusTimer = null;
-				}, 1500);
 			},
 			onDelta: (update) => {
 				applyDelta(update);
@@ -222,6 +253,7 @@
 		}
 
 		syncTabMetrics();
+		document.fonts?.ready.then(syncTabMetrics);
 		window.addEventListener('resize', onResize);
 		scrollContainerElement?.addEventListener('scroll', onScroll, { passive: true });
 		scrollContainerElement?.addEventListener('scrollend', onScroll, { passive: true });
@@ -242,7 +274,6 @@
 
 	onDestroy(() => {
 		ws?.close();
-		if (hideConnectionStatusTimer) clearTimeout(hideConnectionStatusTimer);
 		if (cakeSuggestionSubmittedTimer) clearTimeout(cakeSuggestionSubmittedTimer);
 	});
 </script>
@@ -258,17 +289,26 @@
 			bind:this={tabsNavElement}
 			class="sticky top-0 z-30 mb-4 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen border-y border-border bg-muted/90 backdrop-blur [transform:translateZ(0)]"
 		>
-			<div class="mx-auto flex w-full max-w-2xl items-stretch gap-2 px-4 py-1.5 md:px-6">
+			<div
+				bind:this={tabsRowElement}
+				class={`mx-auto flex w-full max-w-2xl gap-2 px-4 py-1.5 md:px-6 ${stackInvitationLink ? 'flex-col items-start gap-1' : 'items-stretch'}`}
+			>
 				{#if invitationId}
 					<a
+						bind:this={invitationLinkElement}
 						href={backToInvitationHref}
 						class="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium hover:bg-muted"
 					>
 						<Back size={16} /><span>Invitasjon</span>
 					</a>
-					<div class="w-px shrink-0 self-stretch bg-border"></div>
+					<div
+						class={`shrink-0 bg-border ${stackInvitationLink ? 'h-px self-stretch' : 'w-px self-stretch'}`}
+					></div>
 				{/if}
-				<ul class="flex flex-1 flex-wrap content-start items-start gap-x-0.5 gap-y-1">
+				<ul
+					bind:this={tabListElement}
+					class="flex flex-1 flex-wrap content-start items-start gap-x-0.5 gap-y-1 self-stretch"
+				>
 					{#each sectionTabs as tab}
 						<li>
 							<button
@@ -285,11 +325,6 @@
 					{/each}
 				</ul>
 			</div>
-			{#if !connected || showConnectionStatus}
-				<p class="text-muted-foreground pb-2 text-center text-xs">
-					{connected ? 'Tilkoblet' : 'Kobler til ...'}
-				</p>
-			{/if}
 		</nav>
 
 		<WelcomeDetails />
