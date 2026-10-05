@@ -7,13 +7,16 @@ import {
   bulkAddItems,
   createInvitationWithGuests,
   finalizeItemUpdate,
+  findInvitationPlusOne,
   isListName,
   markInvitationVisited,
   parseAddBody,
   parseBulkAddBody,
   parseCreateInvitationBody,
   parseItemUpdateBody,
-  promoteCakeSuggestion
+  parsePlusOneBody,
+  promoteCakeSuggestion,
+  setInvitationPlusOne
 } from './state.js';
 import type { AppState, Guest, ListName, WsDeltaType, WsDeltaUpdate } from '../../shared/types.js';
 import { generateInvitationPdf } from './pdf/invitation.js';
@@ -89,7 +92,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
           .map((guestId) => state.guests.find((guest) => guest.id === guestId))
           .filter((guest): guest is Guest => Boolean(guest));
 
-        return { invitation, guests };
+        return { invitation, guests, plusOne: findInvitationPlusOne(state, invitation) };
       });
 
       res.json(payload);
@@ -102,6 +105,40 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
     }
   });
 
+  app.post('/api/invitations/:id/plus-one', async (req: Request<{ id: string }>, res: Response) => {
+    const id = decodeURIComponent(req.params.id);
+
+    try {
+      const payload = await withMutationLock(async () => {
+        const body = parsePlusOneBody(req.body);
+        const state = await deps.readState();
+        const invitation = state.invitations.find((invitation) => invitation.id === id);
+        if (!invitation) {
+          throw new HttpError('Invitation not found', 404);
+        }
+        if (invitation.plusOneText === null) {
+          throw new HttpError('Invitation does not include a plus-one', 400);
+        }
+
+        const update = setInvitationPlusOne(state, invitation, body);
+        await deps.writeState(state);
+        if (update) {
+          await deps.appendStateChangeLog(update, state);
+          deps.broadcastJson(update);
+        }
+
+        return { plusOne: findInvitationPlusOne(state, invitation) };
+      });
+
+      res.json(payload);
+    } catch (error: unknown) {
+      if (error instanceof HttpError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      res.status(500).json({ error: 'Unexpected error' });
+    }
+  });
 
   app.get('/api/invitations/:id/pdf', async (req: Request<{ id: string }>, res: Response) => {
     const id = decodeURIComponent(req.params.id);
@@ -170,9 +207,9 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   app.post('/api/admin/invitations', requireAdmin, async (req: Request, res: Response) => {
     try {
       const invitation = await withMutationLock(async () => {
-        const { name, guestNames } = parseCreateInvitationBody(req.body);
+        const { name, guestNames, plusOneText } = parseCreateInvitationBody(req.body);
         const state = await deps.readState();
-        const created = createInvitationWithGuests(state, name, guestNames);
+        const created = createInvitationWithGuests(state, name, guestNames, plusOneText);
         await deps.writeState(state);
         return created;
       });

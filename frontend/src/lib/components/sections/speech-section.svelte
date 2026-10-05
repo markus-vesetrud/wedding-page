@@ -30,8 +30,7 @@
 
 		<p class="text-muted-foreground text-sm leading-relaxed">
 			Vi ber om at taler ikke overstiger 4 minutter, andre typer innslag kan være lenger hvis toastmasterene godtar det.
-			Gi de beskjed innen 20.juli 2027, spesielt for sangtekster og lignende som du vil ha med i programmet. 
-			Dette kan sendes til <strong>bryllup.weider.risa@gmail.com</strong>
+			Gi de beskjed innen 20.juli 2027, spesielt for sangtekster og lignende som du vil ha med i programmet
 		</p>
 	</div>
 </SectionShell>

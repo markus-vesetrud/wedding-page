@@ -23,6 +23,7 @@
 
 	let invitationName = $state('');
 	let guestNameInputs = $state<string[]>(['']);
+	let plusOneText = $state('');
 	let creatingInvitation = $state(false);
 	let invitationFormError = $state('');
 	let createdInvitations = $state<{ id: string; name: string; guestCount: number; link: string }[]>([]);
@@ -134,7 +135,7 @@
 			const res = await fetch('/api/admin/invitations', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json', ...adminHeaders() },
-				body: JSON.stringify({ name, guestNames })
+				body: JSON.stringify({ name, guestNames, plusOneText: plusOneText.trim() || null })
 			});
 
 			if (res.status === 401) {
@@ -160,6 +161,7 @@
 			];
 			invitationName = '';
 			guestNameInputs = [''];
+			plusOneText = '';
 		} catch (e) {
 			invitationFormError = e instanceof Error ? e.message : 'Klarte ikke å opprette invitasjonen.';
 		} finally {
@@ -423,6 +425,17 @@
 							</div>
 						{/each}
 						<Button type="button" variant="outline" onclick={addGuestInputRow}>+ Legg til gjest</Button>
+					</div>
+
+					<div class="space-y-1">
+						<label class="text-sm font-medium" for="plusOneText">Tekst om følge (valgfritt)</label>
+						<Input
+							id="plusOneText"
+							type="text"
+							value={plusOneText}
+							oninput={(e: Event) => (plusOneText = (e.currentTarget as HTMLInputElement).value)}
+							placeholder="La stå tomt om invitasjonen ikke inkluderer følge"
+						/>
 					</div>
 
 					<Button type="submit" disabled={creatingInvitation} class="w-full">

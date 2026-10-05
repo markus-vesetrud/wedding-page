@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
+  import { slide } from 'svelte/transition';
   import { page } from '$app/state';
   import { Attendance, type Guest, type Invitation, type WsDeltaUpdate } from '$shared/types';
   import WelcomeHero from '$lib/components/sections/welcome-hero.svelte';
@@ -27,6 +28,12 @@
   let notFound = $state(false);
   let invitation = $state<Invitation | null>(null);
   let members = $state<Member[]>([]);
+  let plusOneEnabled = $state(false);
+  let plusOneName = $state('');
+  let plusOneNotes = $state('');
+  let savedPlusOneKey = '';
+  let savingPlusOne = false;
+  let plusOneAutosaveTimer: ReturnType<typeof setTimeout> | null = null;
   let error = $state('');
   let saving = $state(false);
   let savedRecently = $state(false);
@@ -80,6 +87,68 @@
     }));
   }
 
+  function plusOneKey(): string {
+    return JSON.stringify({ attending: plusOneEnabled, name: plusOneName.trim(), allergies: plusOneNotes });
+  }
+
+  function hydratePlusOne(plusOne: Guest | null) {
+    plusOneEnabled = plusOne?.attendance === Attendance.Attending;
+    plusOneName = plusOne?.name ?? '';
+    plusOneNotes = plusOne?.allergies ?? '';
+    savedPlusOneKey = plusOneKey();
+  }
+
+  function clearPlusOneAutosave() {
+    if (!plusOneAutosaveTimer) return;
+    clearTimeout(plusOneAutosaveTimer);
+    plusOneAutosaveTimer = null;
+  }
+
+  function schedulePlusOneAutosave() {
+    clearPlusOneAutosave();
+    plusOneAutosaveTimer = setTimeout(() => {
+      plusOneAutosaveTimer = null;
+      void savePlusOne();
+    }, notesAutosaveDelayMs);
+  }
+
+  function togglePlusOne() {
+    plusOneEnabled = !plusOneEnabled;
+    void savePlusOne();
+  }
+
+  async function savePlusOne() {
+    clearPlusOneAutosave();
+    // Nothing to save until the plus-one has a name
+    if (plusOneEnabled && !plusOneName.trim()) return;
+    const key = plusOneKey();
+    if (savingPlusOne || key === savedPlusOneKey) return;
+
+    error = '';
+    savingPlusOne = true;
+    try {
+      const res = await fetch(`/api/invitations/${encodeURIComponent(invitationId)}/plus-one`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: key
+      });
+
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? `Request failed (${res.status})`);
+      }
+
+      savedPlusOneKey = key;
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'Kunne ikke lagre følget.';
+      return;
+    } finally {
+      savingPlusOne = false;
+    }
+    // The answer may have changed while the request was in flight
+    if (plusOneKey() !== savedPlusOneKey) await savePlusOne();
+  }
+
   async function loadInvitation() {
     loading = true;
     notFound = false;
@@ -98,9 +167,14 @@
         throw new Error(`Kunne ikke laste invitasjon (${res.status})`);
       }
 
-      const payload = (await res.json()) as { invitation: Invitation; guests: Guest[] };
+      const payload = (await res.json()) as {
+        invitation: Invitation;
+        guests: Guest[];
+        plusOne: Guest | null;
+      };
       invitation = payload.invitation;
       hydrateMembers(payload.guests);
+      hydratePlusOne(payload.plusOne);
     } catch (e) {
       error = e instanceof Error ? e.message : 'Kunne ikke laste invitasjonen.';
     } finally {
@@ -178,7 +252,10 @@
       clearNotesAutosave(memberId);
     }
     // Save all notes at immidiatly
-    await Promise.all(members.map((member) => submitNotes(member.id, member.notes)));
+    await Promise.all([...members.map((member) => submitNotes(member.id, member.notes)), savePlusOne()]);
+    if (invitation?.plusOneText && plusOneEnabled && !plusOneName.trim()) {
+      error = 'Skriv inn navnet på følget ditt.';
+    }
     // Not saving attendance, as any changes there are already saved
 
     const elapsedMs = Date.now() - startedAt;
@@ -203,6 +280,7 @@
       clearTimeout(timer);
     }
     notesAutosaveTimers.clear();
+    clearPlusOneAutosave();
     if (savedRecentlyTimer) clearTimeout(savedRecentlyTimer);
   });
 </script>
@@ -225,7 +303,7 @@
     <Card.Root>
       <Card.Header>
         <Card.Title class="text-2xl min-[600px]:text-3xl">Kjære {invitation.name}</Card.Title>
-        <Card.Description>
+        <Card.Description class="text-md">
           Vi har gleden av å invitere {members.length > 1 ? "dere" : "deg"} til bryllupet vårt! 
           Her kan {members.length > 1 ? "dere" : "du"} svare på om {members.length > 1 ? "dere" : "du"} kommer, helst innen <strong>{answerDeadlineLabel}</strong>. 
           På bryllupssiden finner {members.length > 1 ? "dere" : "du"} program for dagen, veibeskrivelse, gaveønsker og alt det praktiske
@@ -290,6 +368,56 @@
               </div>
             {/each}
           </div>
+
+          {#if invitation.plusOneText}
+            <div class="mt-5 border-t pt-5">
+              <div class="flex items-center justify-between gap-4">
+                <p id="plusOneLabel" class="text-lg font-semibold">{invitation.plusOneText}</p>
+                <div class="flex shrink-0 items-center gap-2">
+                  <span class="text-sm text-muted-foreground">{plusOneEnabled ? 'Ja' : 'Nei'}</span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={plusOneEnabled}
+                    aria-labelledby="plusOneLabel"
+                    onclick={togglePlusOne}
+                    class={`relative inline-flex h-7 w-12 items-center rounded-full border-2 transition-colors ${plusOneEnabled ? 'border-accent bg-accent' : 'border-input bg-muted'}`}
+                  >
+                    <span
+                      class={`inline-block h-5 w-5 rounded-full bg-background shadow transition-transform ${plusOneEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
+                    ></span>
+                  </button>
+                </div>
+              </div>
+
+              {#if plusOneEnabled}
+                <div transition:slide={{ duration: 200 }} class="space-y-2 pt-3">
+                  <Input
+                    type="text"
+                    value={plusOneName}
+                    oninput={(e: Event) => {
+                      plusOneName = (e.currentTarget as HTMLInputElement).value;
+                      schedulePlusOneAutosave();
+                    }}
+                    onblur={savePlusOne}
+                    placeholder="Navn på følget"
+                    aria-label="Navn på følget"
+                  />
+                  <Input
+                    type="text"
+                    value={plusOneNotes}
+                    oninput={(e: Event) => {
+                      plusOneNotes = (e.currentTarget as HTMLInputElement).value;
+                      schedulePlusOneAutosave();
+                    }}
+                    onblur={savePlusOne}
+                    placeholder="Allergier eller andre notater (valgfritt)"
+                    aria-label="Allergier eller andre notater for følget"
+                  />
+                </div>
+              {/if}
+            </div>
+          {/if}
 
           <button
             type="button"

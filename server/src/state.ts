@@ -13,7 +13,8 @@ import {
   Guest,
   Invitation,
   ListEntity,
-  ListName
+  ListName,
+  plusOneGuestId
 } from '../../shared/types.js';
 
 const defaultState: AppState = {
@@ -92,7 +93,8 @@ const InvitationSchema = z
     id: z.string().trim().min(1),
     name: z.string().trim().min(1),
     guestIds: z.array(z.string()),
-    visitedAt: z.array(z.string())
+    visitedAt: z.array(z.string()),
+    plusOneText: z.string().nullable()
   })
   .strict() satisfies z.ZodType<Invitation>;
 
@@ -143,9 +145,24 @@ const patchSchemaByList: Partial<Record<ListName, z.ZodTypeAny>> = {
 const CreateInvitationBodySchema = z
   .object({
     name: z.string().trim().min(1),
-    guestNames: z.array(z.string().trim().min(1)).min(1)
+    guestNames: z.array(z.string().trim().min(1)).min(1),
+    plusOneText: z.string().trim().nullable().optional()
   })
   .strict();
+
+const PlusOneBodySchema = z
+  .object({
+    attending: z.boolean(),
+    name: z.string().trim(),
+    allergies: z.string().optional()
+  })
+  .strict()
+  .refine((body) => !body.attending || body.name.length > 0, {
+    message: 'name is required when bringing a plus-one',
+    path: ['name']
+  });
+
+export type PlusOneBody = z.infer<typeof PlusOneBodySchema>;
 
 const BulkAddBodySchema = z
   .object({
@@ -157,8 +174,16 @@ export function parseState(input: unknown): AppState {
   return parseWithSchema(AppStateSchema, input, 'state');
 }
 
-export function parseCreateInvitationBody(body: unknown): { name: string; guestNames: string[] } {
+export function parseCreateInvitationBody(body: unknown): {
+  name: string;
+  guestNames: string[];
+  plusOneText?: string | null;
+} {
   return parseWithSchema(CreateInvitationBodySchema, body, 'body');
+}
+
+export function parsePlusOneBody(body: unknown): PlusOneBody {
+  return parseWithSchema(PlusOneBodySchema, body, 'body');
 }
 
 export function parseBulkAddBody(body: unknown): { names: string[] } {
@@ -286,12 +311,13 @@ export function createStateStore(storageDir: string) {
     const migratedGifts = parseLegacyAwareListEntries(giftsRaw, 'gifts');
     const migratedGuests = parseLegacyAwareListEntries(guestsRaw, 'guests');
     const migratedCakes = parseLegacyAwareListEntries(cakesRaw, 'cakes');
+    const migratedInvitations = invitationsRaw.map(migrateLegacyInvitation);
 
     const state: AppState = {
       gifts: parseWithSchema(z.array(GiftSchema), migratedGifts, 'gifts'),
       guests: parseWithSchema(z.array(GuestSchema), migratedGuests, 'guests'),
       cakes: parseWithSchema(z.array(CakeSchema), migratedCakes, 'cakes'),
-      invitations: parseWithSchema(z.array(InvitationSchema), invitationsRaw, 'invitations'),
+      invitations: parseWithSchema(z.array(InvitationSchema), migratedInvitations, 'invitations'),
       cakeSuggestions: parseWithSchema(z.array(CakeSuggestionSchema), cakeSuggestionsRaw, 'cakeSuggestions')
     };
 
@@ -449,11 +475,20 @@ export function migrateLegacyRecord(raw: unknown, list: 'gifts' | 'cakes' | 'gue
   }
 
   const output = { ...raw };
+  if (output.isPlusOne === true && typeof output.invitationId === 'string') {
+    output.id = plusOneGuestId(output.invitationId);
+  }
+  delete output.isPlusOne;
   if (!('attendance' in output) && 'checked' in output) {
     output.attendance = output.checked ? 'Kommer' : 'Ikke svart';
   }
   delete output.checked;
   return output;
+}
+
+export function migrateLegacyInvitation(raw: unknown): unknown {
+  if (!isRecord(raw) || 'plusOneText' in raw) return raw;
+  return { ...raw, plusOneText: null };
 }
 
 export function parseLegacyAwareListEntries(
@@ -486,13 +521,15 @@ export function markInvitationVisited(invitation: Invitation): Invitation {
 export function createInvitationWithGuests(
   state: AppState,
   invitationName: string,
-  guestNames: string[]
+  guestNames: string[],
+  plusOneText?: string | null
 ): Invitation {
   const invitation: Invitation = {
     id: makeId(),
     name: invitationName,
     guestIds: [],
-    visitedAt: []
+    visitedAt: [],
+    plusOneText: plusOneText?.trim() || null
   };
 
   for (const guestName of guestNames) {
@@ -509,6 +546,50 @@ export function createInvitationWithGuests(
 
   state.invitations.push(invitation);
   return invitation;
+}
+
+export function findInvitationPlusOne(state: AppState, invitation: Invitation): Guest | null {
+  const id = plusOneGuestId(invitation.id);
+  return state.guests.find((guest) => guest.id === id) ?? null;
+}
+
+/**
+ * Creates or updates the invitation's plus-one guest. Saying no keeps the name and allergies
+ * but marks them as not attending, so switching back restores them.
+ * Returns the delta to broadcast, or null when there was nothing to change.
+ */
+export function setInvitationPlusOne(
+  state: AppState,
+  invitation: Invitation,
+  body: PlusOneBody
+): WsDeltaUpdate | null {
+  const existing = findInvitationPlusOne(state, invitation);
+
+  if (!body.attending) {
+    if (!existing) return null;
+    existing.attendance = Attendance.NotAttending;
+    existing.updatedAt = nowIso();
+    return { type: 'update', list: 'guests', item: existing };
+  }
+
+  if (existing) {
+    existing.name = body.name;
+    existing.attendance = Attendance.Attending;
+    if (body.allergies !== undefined) existing.allergies = body.allergies;
+    existing.updatedAt = nowIso();
+    return { type: 'update', list: 'guests', item: existing };
+  }
+
+  const guest: Guest = {
+    id: plusOneGuestId(invitation.id),
+    name: body.name,
+    updatedAt: nowIso(),
+    attendance: Attendance.Attending,
+    invitationId: invitation.id,
+    allergies: body.allergies
+  };
+  state.guests.push(guest);
+  return { type: 'add', list: 'guests', item: guest };
 }
 
 export function bulkAddItems(state: AppState, list: 'gifts' | 'cakes', names: string[]): (Gift | Cake)[] {

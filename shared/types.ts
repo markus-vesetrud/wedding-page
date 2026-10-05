@@ -15,6 +15,11 @@ export interface Guest extends Item {
   invitationId?: string;
 }
 
+/** The plus-one is stored as a guest with this id, and is not part of the invitation's guestIds */
+export function plusOneGuestId(invitationId: string): string {
+  return `${invitationId}+1`;
+}
+
 export interface CakeSuggestion extends Item {
   bakerName?: string;
 }
@@ -33,6 +38,8 @@ export interface Invitation {
   name: string;
   guestIds: string[];
   visitedAt: string[];
+  /** Personal text offering a plus-one; null when the invitation has no plus-one */
+  plusOneText: string | null;
 }
 
 /** State broadcast to all connected clients — excludes unreviewed cake suggestions, which are admin-only. */

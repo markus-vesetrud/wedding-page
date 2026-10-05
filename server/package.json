@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json && npm run copy-assets",
+    "build": "tsc -p tsconfig.json && npm run copy-assets && npm run mark-shared-cjs",
+    "mark-shared-cjs": "node -e \"require('fs').writeFileSync('dist/shared/package.json', JSON.stringify({ type: 'commonjs' }))\"",
     "copy-assets": "mkdir -p dist/server/src/assets && cp -r src/assets/. dist/server/src/assets/",
     "start": "node dist/server/src/server.js"
   },
