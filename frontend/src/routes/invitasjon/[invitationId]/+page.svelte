@@ -311,7 +311,8 @@
         <Card.Title class="text-2xl min-[600px]:text-3xl">Kjære {invitation.name}</Card.Title>
         <Card.Description class="text-md">
           Vi har gleden av å invitere {titulation} til bryllupet vårt! 
-          Her kan {addressSubject} svare på om {addressSubject} kommer, helst innen <strong>{answerDeadlineLabel}</strong>.
+          {#if invitation.ageNotice}Vielsen er åpen for alle, men selskapet har 18-årsgrense.{/if}
+          Her kan {addressSubject} svare på om {addressSubject} kommer{invitation.ageNotice ? ' i selskapet' : ''}, helst innen <strong>{answerDeadlineLabel}</strong>.
           Mer informasjon finnes på bryllupssida
         </Card.Description>
       </Card.Header>

@@ -95,7 +95,8 @@ const InvitationSchema = z
     guestIds: z.array(z.string()),
     visitedAt: z.array(z.string()),
     plusOneText: z.string().nullable(),
-    titulation: z.string().nullable()
+    titulation: z.string().nullable(),
+    ageNotice: z.boolean()
   })
   .strict() satisfies z.ZodType<Invitation>;
 
@@ -148,7 +149,8 @@ const CreateInvitationBodySchema = z
     name: z.string().trim().min(1),
     guestNames: z.array(z.string().trim().min(1)).min(1),
     plusOneText: z.string().trim().nullable().optional(),
-    titulation: z.string().trim().nullable().optional()
+    titulation: z.string().trim().nullable().optional(),
+    ageNotice: z.boolean().optional()
   })
   .strict();
 
@@ -181,6 +183,7 @@ export function parseCreateInvitationBody(body: unknown): {
   guestNames: string[];
   plusOneText?: string | null;
   titulation?: string | null;
+  ageNotice?: boolean;
 } {
   return parseWithSchema(CreateInvitationBodySchema, body, 'body');
 }
@@ -491,7 +494,7 @@ export function migrateLegacyRecord(raw: unknown, list: 'gifts' | 'cakes' | 'gue
 
 export function migrateLegacyInvitation(raw: unknown): unknown {
   if (!isRecord(raw)) return raw;
-  return { plusOneText: null, titulation: null, ...raw };
+  return { plusOneText: null, titulation: null, ageNotice: false, ...raw };
 }
 
 export function parseLegacyAwareListEntries(
@@ -525,7 +528,7 @@ export function createInvitationWithGuests(
   state: AppState,
   invitationName: string,
   guestNames: string[],
-  options: { plusOneText?: string | null; titulation?: string | null } = {}
+  options: { plusOneText?: string | null; titulation?: string | null; ageNotice?: boolean } = {}
 ): Invitation {
   const invitation: Invitation = {
     id: makeId(),
@@ -533,7 +536,8 @@ export function createInvitationWithGuests(
     guestIds: [],
     visitedAt: [],
     plusOneText: options.plusOneText?.trim() || null,
-    titulation: options.titulation?.trim() || null
+    titulation: options.titulation?.trim() || null,
+    ageNotice: options.ageNotice ?? false
   };
 
   for (const guestName of guestNames) {

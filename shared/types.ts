@@ -42,6 +42,7 @@ export interface Invitation {
   plusOneText: string | null;
   /** Replaces the default du/deg/dere when addressing the invitees, e.g. "tante Liv"; null uses the default */
   titulation: string | null;
+  ageNotice: boolean;
 }
 
 /** State broadcast to all connected clients — excludes unreviewed cake suggestions, which are admin-only. */

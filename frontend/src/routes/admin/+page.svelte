@@ -25,6 +25,7 @@
 	let guestNameInputs = $state<string[]>(['']);
 	let plusOneText = $state('');
 	let titulation = $state('');
+	let ageNotice = $state(false);
 	let creatingInvitation = $state(false);
 	let invitationFormError = $state('');
 	let createdInvitations = $state<{ id: string; name: string; guestCount: number; link: string }[]>([]);
@@ -137,7 +138,8 @@
 				method: 'POST',
 				headers: { 'content-type': 'application/json', ...adminHeaders() },
 				body: JSON.stringify({ name, guestNames, plusOneText: plusOneText.trim() || null,
-					titulation: titulation.trim() || null
+					titulation: titulation.trim() || null,
+					ageNotice
 				})
 			});
 
@@ -166,6 +168,7 @@
 			guestNameInputs = [''];
 			plusOneText = '';
 			titulation = '';
+			ageNotice = false;
 		} catch (e) {
 			invitationFormError = e instanceof Error ? e.message : 'Klarte ikke å opprette invitasjonen.';
 		} finally {
@@ -452,6 +455,11 @@
 							placeholder="La stå tomt om invitasjonen ikke inkluderer følge"
 						/>
 					</div>
+
+					<label class="flex items-center gap-2 text-sm font-medium">
+						<input type="checkbox" bind:checked={ageNotice} />
+						Vis merknad om 18-årsgrense i selskapet
+					</label>
 
 					<Button type="submit" disabled={creatingInvitation} class="w-full">
 						{creatingInvitation ? 'Oppretter ...' : 'Opprett invitasjon'}

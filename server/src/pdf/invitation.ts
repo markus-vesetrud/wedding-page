@@ -7,10 +7,10 @@ import { renderQrCodePng, type QrErrorCorrectionLevel } from './qr.js';
 const WEDDING = {
   couple: 'Malin & Markus',
   ceremonyDate: 'Lørdag 31. juli 2027',
-  ceremonyTime: 'Vielse kl. 14:00',
+  ceremonyTime: 'Vi inviterer til vielse kl. 14:00',
   ceremonyLocation: 'Nittedal kirke, Kirkeveien 121, 1480 Slattum',
   rsvpDeadline: 'Svar innen 1. februar 2027',
-  qrHelpText: (plural: boolean) => `Skann koden for ${plural ? 'deres' : 'din'} personlige invitasjon.`,
+  qrHelpText: (plural: boolean) => `Skann koden for ${plural ? 'deres' : 'din'} personlige invitasjon`,
   dateBadge: '31 · 07 · 2027'
 };
 
