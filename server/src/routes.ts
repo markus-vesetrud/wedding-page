@@ -143,7 +143,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
   app.get('/api/invitations/:id/pdf', async (req: Request<{ id: string }>, res: Response) => {
     const id = decodeURIComponent(req.params.id);
 
-    const eccParam = typeof req.query.ecc === 'string' ? req.query.ecc.toUpperCase() : 'M';
+    const eccParam = typeof req.query.ecc === 'string' ? req.query.ecc.toUpperCase() : 'L';
     if (!isQrErrorCorrectionLevel(eccParam)) {
       res.status(400).json({ error: 'ecc must be one of L, M, Q, H' });
       return;
