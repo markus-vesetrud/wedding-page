@@ -302,7 +302,8 @@
     <Card.Root>
       <Card.Header>
         <Card.Title>Invitasjon ikke funnet</Card.Title>
-        <Card.Description>Denne invitasjonslenken finnes desverre ikke, klag til Markus om du tror det er en feil :D <br/> Du kan uansett gå til hovedsiden under</Card.Description>
+        <Card.Description>Denne invitasjonslenken finnes desverre ikke, klag til Markus om du tror det er en feil :D <br/> 
+          Du kan uansett gå til hovedsiden <a href="/" class="font-medium text-foreground underline underline-offset-2 transition-colors hover:text-accent">her</a></Card.Description>
       </Card.Header>
     </Card.Root>
   {:else if invitation}
