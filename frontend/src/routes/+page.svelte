@@ -287,7 +287,7 @@
 
 		<nav
 			bind:this={tabsNavElement}
-			class="sticky top-0 z-30 mb-4 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen border-y border-border bg-muted/90 backdrop-blur [transform:translateZ(0)]"
+			class="sticky top-0 z-30 mb-4 ml-[calc(50%-50vw)] mr-[calc(50%-50vw)] w-screen border-y border-border bg-muted/90 backdrop-blur"
 		>
 			<div
 				bind:this={tabsRowElement}
@@ -317,7 +317,7 @@
 								class={`flex items-center gap-1.5 rounded-md py-1 pl-1.5 pr-[1.125rem] text-left text-sm font-medium whitespace-nowrap transition-colors hover:bg-card ${activeSection === tab.id ? 'text-accent' : 'text-muted-foreground hover:text-accent'}`}
 							>
 								<span
-									class={`h-1.5 w-1.5 shrink-0 rounded-full bg-accent transition-opacity ${activeSection === tab.id ? 'opacity-100' : 'opacity-0'}`}
+									class={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${activeSection === tab.id ? 'bg-accent' : 'bg-transparent'}`}
 								></span>
 								<span>{tab.label}</span>
 							</button>
