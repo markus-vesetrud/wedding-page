@@ -15,7 +15,6 @@
 		newCake,
 		onNewCakeChange,
 		onAddCake,
-		cakeSuggestionSubmitted,
         applyModalUpdate
 	}: {
 		cakes: Cake[];
@@ -23,7 +22,6 @@
 		newCake: string;
 		onNewCakeChange: (value: string) => void;
 		onAddCake: (name: string, bakerName?: string) => void;
-		cakeSuggestionSubmitted: boolean;
 		applyModalUpdate: (cake: Cake) => void;
 	} = $props();
 
@@ -83,7 +81,7 @@
 <SectionShell
     id="kaker"
     title="Kaker"
-    ingress="Se hvem som baker hva og hvilke kaker vi fortsatt ønsker oss"
+    ingress="Flere har sagt de ønsker å bake kake, her har vi noen forslag :)"
 >
     <div class="space-y-4">
         <AnimatedList items={sortedCakes} {isLoading} emptyText="Ingen kaker i listen ennå." loadingCount={4}>
@@ -97,7 +95,7 @@
             {/snippet}
         </AnimatedList>
         <p>
-            Lyst på noe mer? Vi tar gjerne imot kakeforslag, de sendes til oss først, og dukker opp i lista om vi er enige :D
+            Har du lyst til å bake noe annet? Skriv det gjerne inn her
         </p>
         <form
             class="flex flex-col gap-3 sm:flex-row"
@@ -115,11 +113,6 @@
             />
             <Button type="submit" class="min-w-28 whitespace-nowrap">Legg til</Button>
         </form>
-        {#if cakeSuggestionSubmitted}
-            <p class="text-foreground text-md font-semibold">
-                ✓ Takk for kakeforslaget!
-            </p>
-        {/if}
 
         <CheckModal
             open={modalState == 'adding'}

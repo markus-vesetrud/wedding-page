@@ -80,7 +80,7 @@
 	tone="muted"
 >
 	<div class="rounded-xl border border-dashed p-8 text-center font-mono text-md text-muted-foreground">
-		Gavelisten kommer etter hvert, sjekk igjen senere :D
+		Gaveønsker kommer etter hvert, sjekk igjen senere :D
 	</div>
 	<!-- <div class="space-y-3">
 		<AnimatedList items={sortedGifts} {isLoading} emptyText="Ingen gaveønsker i listen ennå." loadingCount={4}>

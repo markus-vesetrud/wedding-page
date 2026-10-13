@@ -27,7 +27,7 @@
 <div>
 	<p class="mt-12 mb-8 text-md">
 		Vi gleder oss enormt til å feire dagen sammen med deg! <br/>
-		Her finner du alt du lurer på om bryllupet, hvis ikke er det bare å spørre Malin eller Markus direkte
+		Her finner du alt du lurer på om bryllupet, hvis ikke er det bare å spørre Malin eller Markus direkte.
 	</p>
 
 	<div class="my-4 grid gap-3 sm:grid-cols-2">

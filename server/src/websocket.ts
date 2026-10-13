@@ -32,8 +32,8 @@ export function setupWebSocket(server: HttpServer, handlers: WebSocketHandlers) 
   });
 
   wss.on('connection', async (ws) => {
-    const { cakeSuggestions: _cakeSuggestions, ...publicState } = await handlers.readState();
-    ws.send(JSON.stringify({ type: 'state', data: publicState }));
+    const state = await handlers.readState();
+    ws.send(JSON.stringify({ type: 'state', data: state }));
   });
 
   function broadcastJson(message: WsDeltaUpdate): void {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy, onMount } from 'svelte';
-	import type { Cake, CakeSuggestion, Gift, Invitation } from '$shared/types';
+	import type { Cake, Gift, Invitation } from '$shared/types';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
@@ -12,10 +12,6 @@
 	let authenticated = $state(false);
 	let checkingStoredPassword = $state(true);
 	let loginError = $state('');
-	let loadingSuggestions = $state(false);
-	let suggestions = $state<CakeSuggestion[]>([]);
-	let listError = $state('');
-	let promotingId = $state<string | null>(null);
 	let loadingLists = $state(false);
 	let gifts = $state<Gift[]>([]);
 	let cakes = $state<Cake[]>([]);
@@ -34,33 +30,6 @@
 
 	function adminHeaders(): Record<string, string> {
 		return { 'x-admin-password': password };
-	}
-
-	async function loadSuggestions(): Promise<boolean> {
-		loadingSuggestions = true;
-		listError = '';
-
-		try {
-			const res = await fetch('/api/admin/cake-suggestions', { headers: adminHeaders() });
-
-			if (res.status === 401) {
-				return false;
-			}
-
-			if (!res.ok) {
-				const body = (await res.json().catch(() => ({}))) as { error?: string };
-				throw new Error(body.error ?? `Klarte ikke å hente forslag (${res.status})`);
-			}
-
-			const json = (await res.json()) as { suggestions: CakeSuggestion[] };
-			suggestions = json.suggestions;
-			return true;
-		} catch (e) {
-			listError = e instanceof Error ? e.message : 'Klarte ikke å hente forslag.';
-			return true;
-		} finally {
-			loadingSuggestions = false;
-		}
 	}
 
 	async function loadLists(): Promise<boolean> {
@@ -93,7 +62,7 @@
 
 	async function login() {
 		loginError = '';
-		const ok = await loadSuggestions();
+		const ok = await loadLists();
 		if (!ok) {
 			loginError = 'Feil passord.';
 			return;
@@ -101,13 +70,11 @@
 
 		authenticated = true;
 		localStorage.setItem(passwordStorageKey, password);
-		loadLists();
 	}
 
 	function logout() {
 		authenticated = false;
 		password = '';
-		suggestions = [];
 		gifts = [];
 		cakes = [];
 		localStorage.removeItem(passwordStorageKey);
@@ -190,43 +157,13 @@
 		}
 	}
 
-	async function promote(suggestion: CakeSuggestion) {
-		promotingId = suggestion.id;
-		listError = '';
-
-		try {
-			const res = await fetch(`/api/admin/cake-suggestions/${encodeURIComponent(suggestion.id)}/promote`, {
-				method: 'POST',
-				headers: adminHeaders()
-			});
-
-			if (res.status === 401) {
-				logout();
-				return;
-			}
-
-			if (!res.ok) {
-				const body = (await res.json().catch(() => ({}))) as { error?: string };
-				throw new Error(body.error ?? `Klarte ikke å flytte forslaget (${res.status})`);
-			}
-
-			suggestions = suggestions.filter((entry) => entry.id !== suggestion.id);
-			loadLists();
-		} catch (e) {
-			listError = e instanceof Error ? e.message : 'Klarte ikke å flytte forslaget.';
-		} finally {
-			promotingId = null;
-		}
-	}
-
 	onMount(async () => {
 		const stored = localStorage.getItem(passwordStorageKey);
 		if (stored) {
 			password = stored;
-			const ok = await loadSuggestions();
+			const ok = await loadLists();
 			authenticated = ok;
 			if (!ok) localStorage.removeItem(passwordStorageKey);
-			else loadLists();
 		}
 		checkingStoredPassword = false;
 	});
@@ -245,7 +182,7 @@
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Admin</Card.Title>
-				<Card.Description>Skriv inn admin-passordet for å se innsendte kakeforslag.</Card.Description>
+				<Card.Description>Skriv inn admin-passordet.</Card.Description>
 			</Card.Header>
 			<Card.Content>
 				<form
@@ -270,47 +207,6 @@
 			</Card.Content>
 		</Card.Root>
 	{:else}
-		<Card.Root>
-			<Card.Header>
-				<Card.Title>Kakeforslag</Card.Title>
-				<Card.Description>
-					Forslag sendt inn av gjester. Flytt de dere er enige om over til kakelisten, så blir de synlige og
-					reserverbare for alle.
-				</Card.Description>
-			</Card.Header>
-			<Card.Content>
-				{#if loadingSuggestions}
-					<p class="text-sm text-muted-foreground">Laster forslag ...</p>
-				{:else if suggestions.length === 0}
-					<p class="text-sm text-muted-foreground">Ingen nye kakeforslag akkurat nå.</p>
-				{:else}
-					<ul class="divide-y">
-						{#each suggestions as suggestion (suggestion.id)}
-							<li class="flex items-center justify-between gap-3 py-3">
-								<span>
-									<span class="font-medium">{suggestion.name}</span>
-									{#if suggestion.bakerName}
-										<span class="block text-sm text-muted-foreground">Foreslått av {suggestion.bakerName}</span>
-									{/if}
-								</span>
-								<Button
-									onclick={() => promote(suggestion)}
-									disabled={promotingId === suggestion.id}
-									class="whitespace-nowrap"
-								>
-									{promotingId === suggestion.id ? 'Flytter ...' : 'Flytt til kakelisten'}
-								</Button>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-
-				{#if listError}
-					<p class="pt-3 text-sm text-red-600">{listError}</p>
-				{/if}
-			</Card.Content>
-		</Card.Root>
-
 		<Card.Root>
 			<Card.Header>
 				<Card.Title>Gaveliste</Card.Title>
@@ -381,7 +277,7 @@
 		<BulkAddSection
 			list="cakes"
 			title="Bulk-legg til kaker"
-			description="Én kake per linje. Legges rett i kakelisten, uten å gå via forslagsrunden."
+			description="Én kake per linje. Legges til uten reservasjon, klare for at gjester kan velge dem."
 			placeholder={'Én pr. linje, f. eks.\nSjokoladekake\nBlåbærpai'}
 			{adminHeaders}
 			onUnauthorized={logout}

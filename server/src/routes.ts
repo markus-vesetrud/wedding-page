@@ -15,7 +15,6 @@ import {
   parseCreateInvitationBody,
   parseItemUpdateBody,
   parsePlusOneBody,
-  promoteCakeSuggestion,
   setInvitationPlusOne
 } from './state.js';
 import type { AppState, Guest, ListName, WsDeltaType, WsDeltaUpdate } from '../../shared/types.js';
@@ -195,15 +194,6 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
     }
   });
 
-  app.get('/api/admin/cake-suggestions', requireAdmin, async (_req: Request, res: Response) => {
-    try {
-      const state = await deps.readState();
-      res.json({ suggestions: state.cakeSuggestions });
-    } catch {
-      res.status(500).json({ error: 'Unexpected error' });
-    }
-  });
-
   app.get('/api/admin/lists', requireAdmin, async (_req: Request, res: Response) => {
     try {
       const state = await deps.readState();
@@ -266,31 +256,6 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
     }
   });
 
-  app.post('/api/admin/cake-suggestions/:id/promote', requireAdmin, async (req: Request<{ id: string }>, res: Response) => {
-    try {
-      const cake = await withMutationLock(async () => {
-        const state = await deps.readState();
-        const promoted = promoteCakeSuggestion(state, req.params.id);
-        if (!promoted) {
-          throw new HttpError('Suggestion not found', 404);
-        }
-        await deps.writeState(state);
-        const update: WsDeltaUpdate = { type: 'add', list: 'cakes', item: promoted };
-        await deps.appendStateChangeLog(update, state);
-        deps.broadcastJson(update);
-        return promoted;
-      });
-
-      res.json({ cake });
-    } catch (error: unknown) {
-      if (error instanceof HttpError) {
-        res.status(error.statusCode).json({ error: error.message });
-        return;
-      }
-      res.status(500).json({ error: 'Unexpected error' });
-    }
-  });
-
   app.post('/api/:action/:list', async (req: Request<{ list: ListName; action: WsDeltaType }>, res: Response) => {
     const listParam = req.params.list;
     const action = req.params.action;
@@ -336,9 +301,7 @@ export function registerRoutes(app: Express, deps: RouteDependencies): void {
         throw new HttpError('No update produced', 400);
       }
 
-      if (list !== 'cakeSuggestions') {
-        deps.broadcastJson(update);
-      }
+      deps.broadcastJson(update);
       res.json({ update });
     } catch (error: unknown) {
       if (error instanceof HttpError) {

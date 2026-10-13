@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import { createWebSocket } from '$lib/websocket';
-	import { type PublicAppState, type Cake, type WsDeltaType, type Gift, type Guest, type Item, type ListName, type WsDeltaUpdate } from '$shared/types';
+	import { type AppState, type Cake, type WsDeltaType, type Gift, type Guest, type Item, type ListName, type WsDeltaUpdate } from '$shared/types';
 	import WelcomeHero from '$lib/components/sections/welcome-hero.svelte';
 	import WelcomeDetails from '$lib/components/sections/welcome-details.svelte';
 	import ProgramSection from '$lib/components/sections/program-section.svelte';
@@ -37,8 +37,6 @@
 	let activeSection = $state<SectionId>('velkommen');
 	let newGift = $state('');
 	let newCake = $state('');
-	let cakeSuggestionSubmitted = $state(false);
-	let cakeSuggestionSubmittedTimer: ReturnType<typeof setTimeout> | null = null;
 
 	let ws: ReturnType<typeof createWebSocket> | null = null;
 	let scrollContainerElement: HTMLElement | null = null;
@@ -211,16 +209,9 @@
 	}
 
 	async function addCake(name: string, bakerName?: string) {
-		const update = await callListEndpoint('cakeSuggestions', 'add', { name, bakerName });
+		const update = await callListEndpoint('cakes', 'add', { name, bakerName });
+		if (update) applyDelta(update);
 		newCake = '';
-		if (!update) return;
-
-		cakeSuggestionSubmitted = true;
-		if (cakeSuggestionSubmittedTimer) clearTimeout(cakeSuggestionSubmittedTimer);
-		cakeSuggestionSubmittedTimer = setTimeout(() => {
-			cakeSuggestionSubmitted = false;
-			cakeSuggestionSubmittedTimer = null;
-		}, 4000);
 	}
 
 	onMount(() => {
@@ -233,7 +224,7 @@
 		};
 
 		ws = createWebSocket({
-			onState: (state: PublicAppState) => {
+			onState: (state: AppState) => {
 				gifts = state.gifts ?? [];
 				guests = state.guests ?? [];
 				cakes = state.cakes ?? [];
@@ -274,7 +265,6 @@
 
 	onDestroy(() => {
 		ws?.close();
-		if (cakeSuggestionSubmittedTimer) clearTimeout(cakeSuggestionSubmittedTimer);
 	});
 </script>
 
@@ -346,7 +336,6 @@
 				newCake={newCake}
 				onNewCakeChange={(value) => (newCake = value)}
 				onAddCake={addCake}
-				{cakeSuggestionSubmitted}
 				applyModalUpdate={(cake) => applyModalUpdate(cake, 'cakes')}
 			/>
 			<PhotoSection />

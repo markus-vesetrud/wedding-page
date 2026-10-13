@@ -20,11 +20,8 @@ export function plusOneGuestId(invitationId: string): string {
   return `${invitationId}+1`;
 }
 
-export interface CakeSuggestion extends Item {
+export interface Cake extends Item {
   bakerName?: string;
-}
-
-export interface Cake extends CakeSuggestion {
   claimed: boolean;
 }
 
@@ -45,20 +42,15 @@ export interface Invitation {
   ageNotice: boolean;
 }
 
-/** State broadcast to all connected clients — excludes unreviewed cake suggestions, which are admin-only. */
-export interface PublicAppState {
+export interface AppState {
   gifts: Gift[];
   guests: Guest[];
   cakes: Cake[];
   invitations: Invitation[];
 }
 
-export interface AppState extends PublicAppState {
-  cakeSuggestions: CakeSuggestion[];
-}
-
 export type ListName = keyof AppState;
-export type ListEntity = Gift | Cake | Guest | Invitation | CakeSuggestion;
+export type ListEntity = Gift | Cake | Guest | Invitation;
 
 export type WsDeltaUpdate =
   | { type: 'add'; list: ListName; item: ListEntity }
@@ -67,5 +59,5 @@ export type WsDeltaUpdate =
 export type WsDeltaType = WsDeltaUpdate['type'];
 
 export type WsMessage =
-  | { type: 'state'; data: PublicAppState }
+  | { type: 'state'; data: AppState }
   | WsDeltaUpdate;

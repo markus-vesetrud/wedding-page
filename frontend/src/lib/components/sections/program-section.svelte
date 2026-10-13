@@ -14,7 +14,7 @@
 <SectionShell
 	id="program"
 	title="Program"
-	ingress="Endringer kan skje, sjekk igjen når det nærmer seg"
+	ingress="Endringer kan skje, sjekk igjen når det nærmer seg."
 	tone="muted"
 >
 	<SurfaceCard class="divide-y overflow-hidden">

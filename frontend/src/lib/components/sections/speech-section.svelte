@@ -7,7 +7,7 @@
 <SectionShell
 	id="taler"
 	title="Taler og underholdning"
-	ingress="Vil du holde en tale eller et innsalg? Så gøy, det setter vi stor pris på! Ta kontakt med en av våre toastmastere"
+	ingress="Vil du holde en tale eller et innsalg? Så gøy, det setter vi stor pris på! Ta kontakt med en av våre toastmastere."
 >
 	<div class="space-y-4">
 		<div>
@@ -30,7 +30,7 @@
 
 		<p class="text-muted-foreground text-md leading-relaxed">
 			Vi ber om at taler ikke overstiger 4 minutter, andre typer innslag kan være lenger hvis toastmasterene godtar det.
-			Gi de beskjed innen 20.juli 2027, spesielt for sangtekster og lignende som du vil ha med i programmet
+			Gi de beskjed innen 20.juli 2027, særlig for sangtekster og lignende som du vil ha med i programmet.
 		</p>
 	</div>
 </SectionShell>
