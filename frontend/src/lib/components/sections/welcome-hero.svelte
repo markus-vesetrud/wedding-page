@@ -29,7 +29,7 @@
 		>
 			<div class={`hero-tint absolute inset-0 ${dark ? 'hero-tint-light' : 'hero-tint-dark'}`} style={`--tint-strength: ${tintStrength};`}></div>
 			<div class="hero-bottom-fade absolute inset-x-0 bottom-0"></div>
-			<div class="hero-content relative z-10 flex flex-col items-center justify-end pb-16 text-center">
+			<div class="hero-content relative z-10 flex flex-col items-center justify-end pb-12 text-center">
 				<h1 class={`hero-text inline-flex w-fit flex-col font-serif ${dark ? 'text-foreground' : 'text-background'}`}>
 					<span class="hero-title-lg leading-tight tracking-tight">Malin & Markus</span>
 					<div class={`hero-rule mx-auto my-3 h-px w-32 ${dark ? 'bg-[#7A6A43]/70' : 'bg-[#c7ae76]'}`}></div>
@@ -63,7 +63,7 @@
 		 */
 		--hero-target-svh: 85svh;
 		--hero-min-ratio: 0.8;
-		--hero-max-ratio: 2.1;
+		--hero-max-ratio: 2.4;
 		/* ===================================================================== */
 
 		/* Step 1: shrink the target height if a full-width box would be too tall/narrow. */
@@ -73,22 +73,6 @@
 		--hero-w: min(100vw, calc(var(--hero-h) * var(--hero-max-ratio)));
 
 		max-width: var(--hero-w);
-	}
-
-	/*
-	 * Round the bottom corners whenever the width cap above is actually
-	 * shrinking the box below full viewport width — a flush full-bleed box
-	 * should stay square. There's no way to branch on a calc() result in
-	 * plain CSS, so approximate it with the aspect ratio at which the cap
-	 * kicks in for a full-height (unclamped) hero: width/height > max-ratio,
-	 * i.e. roughly vw/vh > max-ratio * 0.85 (the target-svh fraction). Only
-	 * the bottom corners round; the top stays flush with the image above it.
-	 */
-	@media (min-aspect-ratio: 1913/1000) {
-		.hero-frame {
-			border-bottom-left-radius: var(--radius-xl);
-			border-bottom-right-radius: var(--radius-xl);
-		}
 	}
 
 	/*
@@ -169,18 +153,18 @@
 	}
 
 	.hero-title-sm {
-		/* Growth slowed down (per design feedback): 1920px -> 30px, 375px -> 18px (unchanged). */
-		font-size: clamp(1.0rem, calc(var(--hero-w) * 0.0135 + 16px), 2.0rem);
+		/* 375px -> ~21px, capped at 30px on wide screens. */
+		font-size: clamp(1.0rem, calc(var(--hero-w) * 0.0135 + 16px), 1.5rem);
 	}
 
 	.hero-title-lg {
-		/* Growth slowed down (per design feedback): 1920px -> 72px, 375px -> 30px (unchanged). */
-		font-size: clamp(1.5rem, calc(var(--hero-w) * 0.040 + 20px), 4.5rem);
+		/* 375px -> 35px, capped at 70px on wide screens. */
+		font-size: clamp(1.5rem, calc(var(--hero-w) * 0.040 + 20px), 3.5rem);
 	}
 
 	/* Same pivoting scale as the titles above; sized between hero-title-sm and hero-title-lg. */
 	.hero-date {
-		/* Growth slowed down (per design feedback): 1920px -> 48px, 375px -> 20px (unchanged). */
-		font-size: clamp(1.25rem, calc(var(--hero-w) * 0.030 + 18px), 3.5rem);
+		/* 375px -> ~29px, capped at 50px on wide screens. */
+		font-size: clamp(1.25rem, calc(var(--hero-w) * 0.030 + 18px), 2.5rem);
 	}
 </style>
