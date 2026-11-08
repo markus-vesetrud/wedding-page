@@ -328,7 +328,7 @@
       </span>
       <span class="flex-1">
         <span class="block text-lg font-semibold leading-tight">Se bryllupssida</span>
-        <span class="block text-sm font-medium opacity-90">Program, sted, gaver og kaker</span>
+        <span class="block text-sm font-medium opacity-90">Program, sted, gaver og kleskode</span>
       </span>
       <span class="shrink-0"><Forward color="currentColor" size={30}/></span>
     </a>

@@ -82,6 +82,7 @@
     id="kaker"
     title="Kaker"
     ingress="Flere har sagt de ønsker å bake kake, her har vi noen forslag :)"
+    tone="muted"
 >
     <div class="space-y-4">
         <AnimatedList items={sortedCakes} {isLoading} emptyText="Ingen kaker i listen ennå." loadingCount={4}>

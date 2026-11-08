@@ -6,6 +6,7 @@
 	import WelcomeHero from '$lib/components/sections/welcome-hero.svelte';
 	import WelcomeDetails from '$lib/components/sections/welcome-details.svelte';
 	import ProgramSection from '$lib/components/sections/program-section.svelte';
+	import DresscodeSection from '$lib/components/sections/dresscode-section.svelte';
 	import GuestSection from '$lib/components/sections/guest-section.svelte';
 	import GiftSection from '$lib/components/sections/gift-section.svelte';
 	import CakeSection from '$lib/components/sections/cake-section.svelte';
@@ -13,11 +14,12 @@
 	import PhotoSection from '$lib/components/sections/photo-section.svelte';
 	import Back from '$lib/components/ui/icon/back.svelte';
 
-	type SectionId = 'velkommen' | 'program' | 'gjester' | 'gaver' | 'kaker' | 'taler' | 'bilder';
+	type SectionId = 'velkommen' | 'program' | 'kleskode' | 'gjester' | 'gaver' | 'kaker' | 'taler' | 'bilder';
 
 	const sectionTabs: Array<{ id: SectionId; label: string }> = [
 		{ id: 'velkommen', label: 'Velkommen' },
 		{ id: 'program', label: 'Program' },
+		{ id: 'kleskode', label: 'Kleskode' },
 		{ id: 'taler', label: 'Taler' },
 		{ id: 'gaver', label: 'Gaver' },
 		{ id: 'kaker', label: 'Kaker' },
@@ -321,6 +323,7 @@
 
 		<div class="mt-12">
 			<ProgramSection />
+			<DresscodeSection />
 			<SpeechSection />
 			<GiftSection
 				{gifts}

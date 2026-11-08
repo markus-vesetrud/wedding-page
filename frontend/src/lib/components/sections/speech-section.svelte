@@ -8,6 +8,7 @@
 	id="taler"
 	title="Taler og underholdning"
 	ingress="Vil du holde en tale eller et innsalg? Så gøy, det setter vi stor pris på! Ta kontakt med en av våre toastmastere."
+	tone="muted"
 >
 	<div class="space-y-4">
 		<div>
