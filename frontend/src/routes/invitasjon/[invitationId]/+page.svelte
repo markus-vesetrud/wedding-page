@@ -454,8 +454,8 @@
         <p class="text-lg font-semibold">Vil {addressSubject} ha invitasjonen på papir?</p>
         <p class="text-muted-foreground text-sm leading-snug">Roter arket på langsida. Velger du A4, så klipp bort den ubrukte delen</p>
       </div>
-      <div class="flex shrink-0 items-center gap-3">
-        <div role="radiogroup" aria-label="Papirstørrelse" class="flex rounded-xl border-2 border-input bg-background p-1">
+      <!-- <div class="flex shrink-0 items-center gap-3"> -->
+        <!-- <div role="radiogroup" aria-label="Papirstørrelse" class="flex rounded-xl border-2 border-input bg-background p-1">
           {#each pdfLayouts as layout (layout)}
             <button
               type="button"
@@ -467,14 +467,14 @@
               {layout.toUpperCase()}
             </button>
           {/each}
-        </div>
+        </div> -->
         <a
           href={pdfDownloadHref}
           class="flex items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground hover:bg-accent hover:text-accent-foreground"
         >
           <Download size={24} /><span>Last ned PDF</span>
         </a>
-      </div>
+      <!-- </div> -->
     </div>
 
     <a
